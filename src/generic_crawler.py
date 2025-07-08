@@ -38,6 +38,10 @@ class GenericWebCrawler:
         self.progress_manager = progress_manager
         self.job_id = job_id
         
+        # Control flags for pause/stop functionality
+        self._should_stop = False
+        self._should_pause = False
+        
         # Robots.txt cache
         self.robots_cache: Dict[str, RobotFileParser] = {}
         
@@ -105,6 +109,35 @@ class GenericWebCrawler:
         
         return self.articles
     
+    def pause_crawl(self):
+        """Signal the crawler to pause"""
+        self._should_pause = True
+        logger.info(f"Pause signal sent to crawler for {self.config.name}")
+    
+    def stop_crawl(self):
+        """Signal the crawler to stop"""
+        self._should_stop = True
+        logger.info(f"Stop signal sent to crawler for {self.config.name}")
+    
+    def resume_crawl(self):
+        """Resume the crawler from pause"""
+        self._should_pause = False
+        logger.info(f"Resume signal sent to crawler for {self.config.name}")
+    
+    def _check_control_signals(self) -> str:
+        """Check if crawler should pause or stop. Returns action to take."""
+        if self._should_stop:
+            return "stop"
+        elif self._should_pause:
+            return "pause"
+        return "continue"
+    
+    async def _wait_while_paused(self):
+        """Wait while crawler is paused"""
+        while self._should_pause and not self._should_stop:
+            logger.debug(f"Crawler for {self.config.name} is paused, waiting...")
+            await asyncio.sleep(1)  # Check every second
+    
     async def _crawl_breadth_first(self, crawler: AsyncWebCrawler):
         """Breadth-first crawling strategy with progress tracking"""
         current_level = set(self.config.start_urls)
@@ -119,6 +152,22 @@ class GenericWebCrawler:
             )
         
         for depth in range(self.config.limits.max_depth + 1):
+            # Check for control signals at the start of each depth level
+            control_action = self._check_control_signals()
+            if control_action == "stop":
+                logger.info(f"Stopping crawl of {self.config.name} at depth {depth}")
+                break
+            elif control_action == "pause":
+                logger.info(f"Pausing crawl of {self.config.name} at depth {depth}")
+                if self.progress_manager and self.job_id:
+                    self.progress_manager.update_site_progress(
+                        self.job_id, self.config.id, status=SiteCrawlStatus.PAUSED
+                    )
+                await self._wait_while_paused()
+                if self._should_stop:  # Check if stop was called while paused
+                    break
+                logger.info(f"Resuming crawl of {self.config.name} at depth {depth}")
+            
             if not current_level or len(self.articles) >= self.config.limits.max_articles:
                 break
             
@@ -132,6 +181,22 @@ class GenericWebCrawler:
                 )
             
             for url in current_level:
+                # Check for control signals during URL processing
+                control_action = self._check_control_signals()
+                if control_action == "stop":
+                    logger.info(f"Stopping crawl of {self.config.name} during URL processing")
+                    break
+                elif control_action == "pause":
+                    logger.info(f"Pausing crawl of {self.config.name} during URL processing")
+                    if self.progress_manager and self.job_id:
+                        self.progress_manager.update_site_progress(
+                            self.job_id, self.config.id, status=SiteCrawlStatus.PAUSED
+                        )
+                    await self._wait_while_paused()
+                    if self._should_stop:  # Check if stop was called while paused
+                        break
+                    logger.info(f"Resuming crawl of {self.config.name} during URL processing")
+                
                 if len(self.articles) >= self.config.limits.max_articles:
                     break
                 
@@ -172,12 +237,41 @@ class GenericWebCrawler:
     async def _crawl_depth_first(self, crawler: AsyncWebCrawler):
         """Depth-first crawling strategy"""
         for start_url in self.config.start_urls:
+            # Check for control signals
+            control_action = self._check_control_signals()
+            if control_action == "stop":
+                logger.info(f"Stopping depth-first crawl of {self.config.name}")
+                break
+            elif control_action == "pause":
+                logger.info(f"Pausing depth-first crawl of {self.config.name}")
+                if self.progress_manager and self.job_id:
+                    self.progress_manager.update_site_progress(
+                        self.job_id, self.config.id, status=SiteCrawlStatus.PAUSED
+                    )
+                await self._wait_while_paused()
+                if self._should_stop:
+                    break
+                logger.info(f"Resuming depth-first crawl of {self.config.name}")
+            
             if len(self.articles) >= self.config.limits.max_articles:
                 break
             await self._crawl_recursive(crawler, start_url, 0)
     
     async def _crawl_recursive(self, crawler: AsyncWebCrawler, url: str, depth: int):
         """Recursive crawling for depth-first strategy"""
+        # Check for control signals
+        control_action = self._check_control_signals()
+        if control_action == "stop":
+            return
+        elif control_action == "pause":
+            if self.progress_manager and self.job_id:
+                self.progress_manager.update_site_progress(
+                    self.job_id, self.config.id, status=SiteCrawlStatus.PAUSED
+                )
+            await self._wait_while_paused()
+            if self._should_stop:
+                return
+        
         if (depth > self.config.limits.max_depth or 
             url in self.crawled_urls or 
             len(self.articles) >= self.config.limits.max_articles):

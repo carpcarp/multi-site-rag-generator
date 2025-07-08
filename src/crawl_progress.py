@@ -35,6 +35,7 @@ class SiteCrawlStatus(Enum):
     DISCOVERING = "discovering"  # Finding URLs to crawl
     CRAWLING = "crawling"        # Actively crawling pages
     PROCESSING = "processing"    # Processing crawled content
+    PAUSED = "paused"           # Crawl paused by user
     COMPLETED = "completed"
     FAILED = "failed"
     SKIPPED = "skipped"
@@ -502,3 +503,107 @@ class CrawlProgressManager:
                             logger.info(f"Cleaned up old progress file for job {job_id}")
             except Exception as e:
                 logger.warning(f"Failed to cleanup progress file {progress_file}: {str(e)}")
+
+    def pause_job(self, job_id: str) -> bool:
+        """Pause a running crawl job"""
+        if job_id not in self.active_jobs:
+            logger.warning(f"Job {job_id} not found")
+            return False
+        
+        job_progress = self.active_jobs[job_id]
+        
+        if job_progress.status != CrawlJobStatus.RUNNING:
+            logger.warning(f"Job {job_id} is not running (status: {job_progress.status.value})")
+            return False
+        
+        # Pause the job
+        job_progress.status = CrawlJobStatus.PAUSED
+        job_progress.last_update = datetime.now()
+        
+        # Pause all active sites in the job
+        for site_progress in job_progress.site_progresses.values():
+            if site_progress.status in [SiteCrawlStatus.DISCOVERING, SiteCrawlStatus.CRAWLING, SiteCrawlStatus.PROCESSING]:
+                site_progress.status = SiteCrawlStatus.PAUSED
+                site_progress.last_update = datetime.now()
+        
+        # Save current state
+        self.save_progress(job_id)
+        logger.info(f"Paused crawl job {job_id}")
+        return True
+
+    def stop_job(self, job_id: str) -> bool:
+        """Stop a crawl job (cancel it)"""
+        if job_id not in self.active_jobs:
+            logger.warning(f"Job {job_id} not found")
+            return False
+        
+        job_progress = self.active_jobs[job_id]
+        
+        if job_progress.status in [CrawlJobStatus.COMPLETED, CrawlJobStatus.FAILED, CrawlJobStatus.CANCELLED]:
+            logger.warning(f"Job {job_id} is already finished (status: {job_progress.status.value})")
+            return False
+        
+        # Stop the job
+        job_progress.status = CrawlJobStatus.CANCELLED
+        job_progress.completion_time = datetime.now()
+        job_progress.last_update = datetime.now()
+        
+        # Mark all incomplete sites as cancelled (failed)
+        for site_progress in job_progress.site_progresses.values():
+            if site_progress.status not in [SiteCrawlStatus.COMPLETED, SiteCrawlStatus.FAILED]:
+                site_progress.status = SiteCrawlStatus.FAILED
+                site_progress.completion_time = datetime.now()
+                site_progress.last_update = datetime.now()
+                site_progress.errors.append("Job cancelled by user")
+        
+        # Save final state
+        self.save_progress(job_id)
+        logger.info(f"Stopped crawl job {job_id}")
+        return True
+
+    def resume_job(self, job_id: str) -> bool:
+        """Resume a paused crawl job"""
+        if job_id not in self.active_jobs:
+            logger.warning(f"Job {job_id} not found")
+            return False
+        
+        job_progress = self.active_jobs[job_id]
+        
+        if job_progress.status != CrawlJobStatus.PAUSED:
+            logger.warning(f"Job {job_id} is not paused (status: {job_progress.status.value})")
+            return False
+        
+        # Resume the job
+        job_progress.status = CrawlJobStatus.RUNNING
+        job_progress.last_update = datetime.now()
+        
+        # Resume all paused sites in the job
+        for site_progress in job_progress.site_progresses.values():
+            if site_progress.status == SiteCrawlStatus.PAUSED:
+                # Determine what state to resume to based on progress
+                if site_progress.discovered_urls and site_progress.remaining_urls:
+                    site_progress.status = SiteCrawlStatus.CRAWLING
+                elif site_progress.discovered_urls and not site_progress.remaining_urls:
+                    site_progress.status = SiteCrawlStatus.PROCESSING
+                else:
+                    site_progress.status = SiteCrawlStatus.DISCOVERING
+                site_progress.last_update = datetime.now()
+        
+        # Save state
+        self.save_progress(job_id)
+        logger.info(f"Resumed crawl job {job_id}")
+        return True
+
+    def get_resumable_sites(self, job_id: str) -> List[str]:
+        """Get list of sites that can be resumed for a job"""
+        if job_id not in self.active_jobs:
+            return []
+        
+        job_progress = self.active_jobs[job_id]
+        resumable_sites = []
+        
+        for site_id, site_progress in job_progress.site_progresses.items():
+            if site_progress.status in [SiteCrawlStatus.PAUSED, SiteCrawlStatus.DISCOVERING, SiteCrawlStatus.CRAWLING]:
+                resumable_sites.append(site_id)
+        
+        return resumable_sites

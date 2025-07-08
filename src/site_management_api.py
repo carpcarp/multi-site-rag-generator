@@ -145,6 +145,7 @@ class CrawlJobManager:
     def __init__(self):
         self.jobs: Dict[str, Dict[str, Any]] = {}
         self.active_jobs: Dict[str, asyncio.Task] = {}
+        self.active_crawlers: Dict[str, Dict[str, Any]] = {}  # job_id -> {site_id: crawler}
         self.progress_manager = CrawlProgressManager()
     
     def create_job(self, site_ids: List[str], site_configs: Dict[str, Any]) -> str:
@@ -184,6 +185,37 @@ class CrawlJobManager:
         if progress:
             progress.status = CrawlJobStatus.RUNNING
             self.progress_manager.save_progress(job_id)
+
+    def register_crawler(self, job_id: str, site_id: str, crawler):
+        """Register an active crawler for control purposes"""
+        if job_id not in self.active_crawlers:
+            self.active_crawlers[job_id] = {}
+        self.active_crawlers[job_id][site_id] = crawler
+
+    def unregister_crawler(self, job_id: str, site_id: str):
+        """Unregister a crawler when it completes"""
+        if job_id in self.active_crawlers and site_id in self.active_crawlers[job_id]:
+            del self.active_crawlers[job_id][site_id]
+            if not self.active_crawlers[job_id]:  # Remove job entry if no crawlers left
+                del self.active_crawlers[job_id]
+
+    def pause_job_crawlers(self, job_id: str):
+        """Signal all active crawlers for a job to pause"""
+        if job_id in self.active_crawlers:
+            for site_id, crawler in self.active_crawlers[job_id].items():
+                crawler.pause_crawl()
+
+    def stop_job_crawlers(self, job_id: str):
+        """Signal all active crawlers for a job to stop"""
+        if job_id in self.active_crawlers:
+            for site_id, crawler in self.active_crawlers[job_id].items():
+                crawler.stop_crawl()
+
+    def resume_job_crawlers(self, job_id: str):
+        """Signal all active crawlers for a job to resume"""
+        if job_id in self.active_crawlers:
+            for site_id, crawler in self.active_crawlers[job_id].items():
+                crawler.resume_crawl()
     
     def complete_job(self, job_id: str, results: Dict[str, Any]):
         if job_id in self.active_jobs:
@@ -659,6 +691,75 @@ def create_site_management_api() -> FastAPI:
             total_articles=job.get('total_articles', 0),
             errors=job.get('errors', [])
         )
+
+    @app.post("/crawl/{job_id}/pause")
+    async def pause_crawl(job_id: str):
+        """Pause a running crawl job"""
+        success = job_manager.progress_manager.pause_job(job_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Crawl job not found or cannot be paused")
+        
+        # Signal any active crawlers to pause
+        job_manager.pause_job_crawlers(job_id)
+        
+        return {"message": f"Crawl job {job_id} paused successfully", "status": "paused"}
+
+    @app.post("/crawl/{job_id}/stop")
+    async def stop_crawl(job_id: str):
+        """Stop (cancel) a crawl job"""
+        success = job_manager.progress_manager.stop_job(job_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Crawl job not found or cannot be stopped")
+        
+        # Signal any active crawlers to stop
+        job_manager.stop_job_crawlers(job_id)
+        
+        # Cancel the background task if it's running
+        if job_id in job_manager.active_jobs:
+            task = job_manager.active_jobs[job_id]
+            if not task.done():
+                task.cancel()
+            del job_manager.active_jobs[job_id]
+        
+        return {"message": f"Crawl job {job_id} stopped successfully", "status": "cancelled"}
+
+    @app.post("/crawl/{job_id}/resume")
+    async def resume_crawl(
+        job_id: str,
+        background_tasks: BackgroundTasks
+    ):
+        """Resume a paused crawl job"""
+        progress = job_manager.get_job_progress(job_id)
+        if not progress:
+            raise HTTPException(status_code=404, detail="Crawl job not found")
+        
+        if progress.status != CrawlJobStatus.PAUSED:
+            raise HTTPException(status_code=400, detail="Job is not paused")
+        
+        # Get resumable sites
+        resumable_sites = job_manager.progress_manager.get_resumable_sites(job_id)
+        if not resumable_sites:
+            raise HTTPException(status_code=400, detail="No sites available to resume")
+        
+        # Resume the job in progress manager
+        success = job_manager.progress_manager.resume_job(job_id)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to resume job")
+        
+        # Start background task to continue crawling
+        background_tasks.add_task(
+            run_crawl_job,
+            job_id,
+            resumable_sites,
+            force_recrawl=False
+        )
+        
+        return {
+            "message": f"Crawl job {job_id} resumed successfully",
+            "status": "running",
+            "resumable_sites": resumable_sites,
+            "sites_count": len(resumable_sites)
+        }
     
     @app.get("/crawl/jobs")
     async def list_crawl_jobs():
@@ -814,9 +915,20 @@ async def run_crawl_job(job_id: str, site_ids: List[str], force_recrawl: bool = 
                         )
                         continue
                 
-                # Crawl the site with progress tracking
-                articles = await multi_crawler.crawl_site_by_id(site_id, job_id)
-                results[site_id] = articles
+                # Create crawler instance for this site
+                site_config = config_manager.get_site(site_id)
+                crawler = GenericWebCrawler(site_config, progress_manager, job_id)
+                
+                # Register crawler for control purposes
+                job_manager.register_crawler(job_id, site_id, crawler)
+                
+                try:
+                    # Crawl the site with progress tracking
+                    articles = await crawler.crawl_site()
+                    results[site_id] = articles
+                finally:
+                    # Unregister crawler when done
+                    job_manager.unregister_crawler(job_id, site_id)
                 
                 logger.info(f"Crawled {len(articles)} articles from {site_config.name}")
                 
