@@ -662,30 +662,126 @@ class GenericWebCrawler:
             return url
 
     def _extract_links(self, html: str, base_url: str) -> List[str]:
-        """Extract relevant links from HTML"""
+        """Extract relevant links from HTML - comprehensive extraction from all link-containing elements"""
         try:
             soup = BeautifulSoup(html, 'html.parser')
             links = []
             seen_normalized = set()
             
-            for link in soup.find_all('a', href=True):
-                href = link['href']
-                full_url = urljoin(base_url, href)
-                
-                # Normalize URL for uniqueness checking
-                normalized_url = self._normalize_url(full_url)
-                
-                if (self._is_valid_url(full_url) and 
-                    normalized_url not in seen_normalized and 
-                    normalized_url not in {self._normalize_url(u) for u in self.crawled_urls}):
-                    links.append(normalized_url)  # Store normalized URL instead of full_url
-                    seen_normalized.add(normalized_url)
+            # Define all HTML elements and attributes that can contain links
+            link_selectors = [
+                # Standard anchor tags
+                ('a', 'href'),
+                # Area tags in image maps
+                ('area', 'href'),
+                # Link tags (stylesheets, etc.)
+                ('link', 'href'),
+                # Base tags
+                ('base', 'href'),
+                # Form actions
+                ('form', 'action'),
+                # Iframe sources
+                ('iframe', 'src'),
+                # Frame sources
+                ('frame', 'src'),
+                # Object data
+                ('object', 'data'),
+                # Embed sources
+                ('embed', 'src'),
+                # Image sources (for image links)
+                ('img', 'src'),
+                # Script sources (for potential navigation)
+                ('script', 'src'),
+                # Video sources
+                ('video', 'src'),
+                # Audio sources  
+                ('audio', 'src'),
+                # Source elements
+                ('source', 'src'),
+                # Track elements
+                ('track', 'src'),
+                # Meta refresh redirects
+                ('meta', 'content'),
+            ]
             
-            return links[:200]  # Increase limit to crawl more links
+            for tag_name, attr_name in link_selectors:
+                elements = soup.find_all(tag_name)
+                
+                for element in elements:
+                    # Handle different attribute extraction scenarios
+                    if attr_name == 'content' and tag_name == 'meta':
+                        # Special handling for meta refresh
+                        http_equiv = element.get('http-equiv', '').lower()
+                        if http_equiv == 'refresh':
+                            content = element.get('content', '')
+                            # Extract URL from refresh content (format: "5;URL=http://example.com")
+                            if 'url=' in content.lower():
+                                url_part = content.split('url=', 1)[1].strip()
+                                if url_part:
+                                    self._process_extracted_url(url_part, base_url, links, seen_normalized)
+                    else:
+                        # Standard attribute extraction
+                        url_value = element.get(attr_name)
+                        if url_value:
+                            self._process_extracted_url(url_value, base_url, links, seen_normalized)
+                    
+                    # Also check for onclick handlers and other JavaScript links
+                    onclick = element.get('onclick', '')
+                    if onclick:
+                        # Extract URLs from onclick handlers (basic pattern matching)
+                        url_patterns = re.findall(r'location\.href\s*=\s*[\'"]([^\'"]+)[\'"]', onclick)
+                        url_patterns.extend(re.findall(r'window\.open\s*\(\s*[\'"]([^\'"]+)[\'"]', onclick))
+                        url_patterns.extend(re.findall(r'window\.location\s*=\s*[\'"]([^\'"]+)[\'"]', onclick))
+                        
+                        for url_pattern in url_patterns:
+                            self._process_extracted_url(url_pattern, base_url, links, seen_normalized)
+            
+            # Also extract URLs from text content using regex patterns
+            # This catches URLs that might be in plain text or JavaScript
+            text_content = soup.get_text()
+            url_regex = r'https?://[^\s<>"\']+|www\.[^\s<>"\']+|[^\s<>"\']+\.[a-z]{2,4}/[^\s<>"\']*'
+            text_urls = re.findall(url_regex, text_content, re.IGNORECASE)
+            
+            for url in text_urls:
+                if not url.startswith(('http://', 'https://')):
+                    if url.startswith('www.'):
+                        url = 'https://' + url
+                    elif '.' in url and '/' in url:
+                        url = 'https://' + url
+                
+                self._process_extracted_url(url, base_url, links, seen_normalized)
+            
+            logger.info(f"Extracted {len(links)} unique links from {base_url}")
+            return links[:500]  # Increase limit significantly to capture more links
             
         except Exception as e:
             logger.error(f"Error extracting links: {str(e)}")
             return []
+    
+    def _process_extracted_url(self, url_value: str, base_url: str, links: List[str], seen_normalized: set):
+        """Process and validate a single extracted URL"""
+        try:
+            # Clean the URL value
+            url_value = url_value.strip()
+            if not url_value:
+                return
+            
+            # Create absolute URL
+            full_url = urljoin(base_url, url_value)
+            
+            # Normalize URL for uniqueness checking
+            normalized_url = self._normalize_url(full_url)
+            
+            # Check if URL should be included
+            if (self._is_valid_url(full_url) and 
+                normalized_url not in seen_normalized and 
+                normalized_url not in {self._normalize_url(u) for u in self.crawled_urls}):
+                links.append(normalized_url)
+                seen_normalized.add(normalized_url)
+                logger.debug(f"Added link: {normalized_url}")
+                
+        except Exception as e:
+            logger.debug(f"Error processing URL '{url_value}': {str(e)}")
     
     def _is_valid_url(self, url: str) -> bool:
         """Check if URL should be crawled based on patterns"""
@@ -693,45 +789,53 @@ class GenericWebCrawler:
             parsed = urlparse(url)
             logger.debug(f"Validating URL: {url}")
             
-            # Check allowed patterns - be more permissive
-            if self.config.allowed_patterns:
-                allowed = any(re.search(pattern, url) for pattern in self.config.allowed_patterns)
-                logger.debug(f"Allowed patterns check for {url}: {allowed}, patterns: {self.config.allowed_patterns}")
-                if not allowed:
-                    logger.debug(f"URL {url} rejected by allowed patterns")
-                    return False
-            
-            # Check blocked patterns
-            if self.config.blocked_patterns:
-                blocked = any(re.search(pattern, url) for pattern in self.config.blocked_patterns)
-                if blocked:
-                    return False
-            
-            # Basic validation
+            # Basic validation first
             if not parsed.netloc:
+                return False
+            
+            # Skip fragments and javascript early
+            if any(skip in url.lower() for skip in [
+                'javascript:', 'mailto:', 'tel:'
+            ]):
                 return False
             
             # Skip common non-content files
             if any(url.lower().endswith(ext) for ext in [
                 '.pdf', '.jpg', '.jpeg', '.png', '.gif', '.svg', '.css', '.js',
-                '.zip', '.rar', '.exe', '.dmg', '.mp3', '.mp4', '.avi'
+                '.zip', '.rar', '.exe', '.dmg', '.mp3', '.mp4', '.avi', '.ico', '.xml'
             ]):
                 return False
             
-            # Skip fragments and javascript
-            if any(skip in url.lower() for skip in [
-                'javascript:', 'mailto:', 'tel:', '#'
-            ]):
-                return False
+            # Check blocked patterns first (reject if blocked)
+            if self.config.blocked_patterns:
+                blocked = any(re.search(pattern, url, re.IGNORECASE) for pattern in self.config.blocked_patterns)
+                if blocked:
+                    logger.debug(f"URL {url} blocked by blocked patterns")
+                    return False
             
-            # Check for English content in URL (early filtering)
+            # Check allowed patterns - be more permissive
+            if self.config.allowed_patterns:
+                allowed = any(re.search(pattern, url, re.IGNORECASE) for pattern in self.config.allowed_patterns)
+                logger.debug(f"Allowed patterns check for {url}: {allowed}, patterns: {self.config.allowed_patterns}")
+                if not allowed:
+                    logger.debug(f"URL {url} rejected by allowed patterns")
+                    return False
+            else:
+                # If no allowed patterns specified, allow all URLs from the same domain
+                base_domain = urlparse(self.config.base_url).netloc
+                if parsed.netloc != base_domain and not parsed.netloc.endswith('.' + base_domain):
+                    logger.debug(f"URL {url} rejected - different domain from base_url")
+                    return False
+            
+            # Check for English content in URL (early filtering) - but be more lenient
             if self.config.language.lower() == "en" and not self._is_english_url(url):
                 logger.debug(f"Skipping non-English URL: {url}")
                 return False
             
             return True
             
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Error validating URL {url}: {str(e)}")
             return False
     
     async def _is_allowed_by_robots(self, url: str) -> bool:
