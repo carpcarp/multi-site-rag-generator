@@ -997,7 +997,7 @@
         async function crawlSite(siteId) {
             try {
                 showLoading('Starting crawl...');
-                const response = await fetch(`${API_BASE}/crawl`, {
+                const response = await fetch(`${API_BASE}/crawl/start`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1027,8 +1027,28 @@
         async function crawlAllSites() {
             try {
                 showLoading('Starting crawl for all sites...');
-                const response = await fetch(`${API_BASE}/crawl/all`, {
-                    method: 'POST'
+                
+                // First, get all active site IDs
+                const sitesResponse = await fetch(`${API_BASE}/sites?active_only=true`);
+                const sites = await sitesResponse.json();
+                
+                if (sites.length === 0) {
+                    showNotification('No active sites found to crawl', 'warning');
+                    return;
+                }
+                
+                const siteIds = sites.map(site => site.id);
+                
+                // Then start crawl for all sites
+                const response = await fetch(`${API_BASE}/crawl/start`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        site_ids: siteIds,
+                        force_recrawl: true
+                    })
                 });
 
                 const result = await response.json();
@@ -1050,7 +1070,8 @@
         async function loadCrawlJobs() {
             try {
                 const response = await fetch(`${API_BASE}/crawl/jobs`);
-                const jobs = await response.json();
+                const data = await response.json();
+                const jobs = data.jobs || [];  // Extract the jobs array from the response
                 displayCrawlJobs(jobs);
             } catch (error) {
                 console.error('Error loading crawl jobs:', error);
@@ -1060,6 +1081,17 @@
 
         function displayCrawlJobs(jobs) {
             const container = document.getElementById('crawl-jobs-container');
+            
+            // Additional validation to ensure jobs is an array
+            if (!Array.isArray(jobs)) {
+                console.error('displayCrawlJobs: jobs is not an array:', jobs);
+                container.innerHTML = `
+                    <div class="notification is-warning">
+                        <p>Error displaying crawl jobs: Invalid data format received.</p>
+                    </div>
+                `;
+                return;
+            }
             
             if (jobs.length === 0) {
                 container.innerHTML = `
@@ -1072,32 +1104,43 @@
 
             container.innerHTML = '';
             jobs.forEach(job => {
-                const jobCard = `
-                    <div class="card mb-4">
-                        <div class="card-content">
-                            <div class="level">
-                                <div class="level-left">
-                                    <div class="level-item">
-                                        <div>
-                                            <p class="title is-6">${job.job_id}</p>
-                                            <p class="subtitle is-7">${new Date(job.created_at).toLocaleString()}</p>
+                try {
+                    // Validate job object structure
+                    if (!job || typeof job !== 'object') {
+                        console.warn('Invalid job object:', job);
+                        return;
+                    }
+                    
+                    const jobCard = `
+                        <div class="card mb-4">
+                            <div class="card-content">
+                                <div class="level">
+                                    <div class="level-left">
+                                        <div class="level-item">
+                                            <div>
+                                                <p class="title is-6">${job.job_id || 'Unknown Job'}</p>
+                                                <p class="subtitle is-7">${job.started_at ? new Date(job.started_at).toLocaleString() : 'Unknown Date'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="level-right">
+                                        <div class="level-item">
+                                            <span class="tag crawl-status ${getStatusClass(job.status)}">${job.status || 'unknown'}</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="level-right">
-                                    <div class="level-item">
-                                        <span class="tag crawl-status ${getStatusClass(job.status)}">${job.status}</span>
-                                    </div>
-                                </div>
+                                <p class="content">
+                                    Sites: ${job.site_ids ? job.site_ids.length : 0} | 
+                                    Articles: ${job.total_articles || 0}
+                                    ${job.completed_at ? ` | Completed: ${new Date(job.completed_at).toLocaleString()}` : ''}
+                                </p>
                             </div>
-                            <p class="content">
-                                Sites: ${job.site_ids.length} | 
-                                Progress: ${job.sites_completed}/${job.total_sites}
-                            </p>
                         </div>
-                    </div>
-                `;
-                container.innerHTML += jobCard;
+                    `;
+                    container.innerHTML += jobCard;
+                } catch (error) {
+                    console.error('Error rendering job card:', error, job);
+                }
             });
         }
 
