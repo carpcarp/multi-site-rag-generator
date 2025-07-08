@@ -20,6 +20,7 @@ from crawl4ai.chunking_strategy import RegexChunking
 
 from site_config import SiteConfig, CrawlStrategy, ContentType, SiteConfigManager
 from crawl_progress import CrawlProgressManager, SiteCrawlStatus
+from auth_manager import AuthenticationManager
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ class GenericWebCrawler:
     """Generic web crawler that works with any website based on configuration"""
     
     def __init__(self, site_config: SiteConfig, progress_manager: Optional[CrawlProgressManager] = None, 
-                 job_id: Optional[str] = None):
+                 job_id: Optional[str] = None, auth_manager: Optional[AuthenticationManager] = None):
         self.config = site_config
         self.crawled_urls: Set[str] = set()
         self.articles: List[Dict[str, Any]] = []
@@ -37,6 +38,9 @@ class GenericWebCrawler:
         # Progress tracking
         self.progress_manager = progress_manager
         self.job_id = job_id
+        
+        # Authentication management
+        self.auth_manager = auth_manager or AuthenticationManager()
         
         # Control flags for pause/stop functionality
         self._should_stop = False
@@ -55,6 +59,20 @@ class GenericWebCrawler:
         logger.info(f"Max articles: {self.config.limits.max_articles}")
         logger.info(f"Max depth: {self.config.limits.max_depth}")
         
+        # Check authentication if required
+        if self.config.auth_config.requires_sso:
+            logger.info(f"Checking authentication for {self.config.name}")
+            auth_status = await self.auth_manager.check_authentication_status(self.config)
+            
+            if not auth_status.is_authenticated:
+                error_msg = f"Authentication required for {self.config.name}. Run setup-auth command first."
+                logger.error(error_msg)
+                if self.progress_manager and self.job_id:
+                    self.progress_manager.fail_site(self.job_id, self.config.id, error_msg)
+                raise Exception(error_msg)
+            
+            logger.info(f"✅ Authentication verified for {self.config.name}")
+        
         start_time = datetime.now()
         
         # Initialize progress tracking
@@ -66,20 +84,21 @@ class GenericWebCrawler:
             )
         
         try:
-            async with AsyncWebCrawler(
-                headless=True,
-                verbose=True,
-                user_agent=f"GenericRAGBot/1.0 (+{self.config.base_url})"
-            ) as crawler:
-                
-                if self.config.crawl_strategy == CrawlStrategy.SITEMAP:
-                    await self._crawl_from_sitemap(crawler)
-                elif self.config.crawl_strategy == CrawlStrategy.URL_LIST:
-                    await self._crawl_url_list(crawler)
-                elif self.config.crawl_strategy == CrawlStrategy.BREADTH_FIRST:
-                    await self._crawl_breadth_first(crawler)
-                else:  # DEPTH_FIRST
-                    await self._crawl_depth_first(crawler)
+            # Get browser configuration with authentication if needed
+            browser_config = self.auth_manager.get_browser_config(self.config)
+            
+            if browser_config:
+                # Use authenticated browser configuration
+                async with AsyncWebCrawler(config=browser_config) as crawler:
+                    await self._execute_crawl_strategy(crawler)
+            else:
+                # Use default configuration for non-authenticated sites
+                async with AsyncWebCrawler(
+                    headless=True,
+                    verbose=True,
+                    user_agent=f"GenericRAGBot/1.0 (+{self.config.base_url})"
+                ) as crawler:
+                    await self._execute_crawl_strategy(crawler)
         
         except Exception as e:
             logger.error(f"Error during crawling: {str(e)}")
@@ -108,6 +127,17 @@ class GenericWebCrawler:
             )
         
         return self.articles
+    
+    async def _execute_crawl_strategy(self, crawler):
+        """Execute the appropriate crawl strategy"""
+        if self.config.crawl_strategy == CrawlStrategy.SITEMAP:
+            await self._crawl_from_sitemap(crawler)
+        elif self.config.crawl_strategy == CrawlStrategy.URL_LIST:
+            await self._crawl_url_list(crawler)
+        elif self.config.crawl_strategy == CrawlStrategy.BREADTH_FIRST:
+            await self._crawl_breadth_first(crawler)
+        else:  # DEPTH_FIRST
+            await self._crawl_depth_first(crawler)
     
     def pause_crawl(self):
         """Signal the crawler to pause"""
@@ -928,9 +958,10 @@ class GenericWebCrawler:
 class MultiSiteCrawler:
     """Orchestrates crawling of multiple sites with progress tracking"""
     
-    def __init__(self, config_manager: SiteConfigManager = None, progress_manager: Optional[CrawlProgressManager] = None):
+    def __init__(self, config_manager: SiteConfigManager = None, progress_manager: Optional[CrawlProgressManager] = None, auth_manager: Optional[AuthenticationManager] = None):
         self.config_manager = config_manager or SiteConfigManager()
         self.progress_manager = progress_manager
+        self.auth_manager = auth_manager
     
     async def crawl_all_active_sites(self) -> Dict[str, List[Dict[str, Any]]]:
         """Crawl all active sites"""
@@ -942,7 +973,7 @@ class MultiSiteCrawler:
         for site_config in active_sites:
             try:
                 logger.info(f"Crawling site: {site_config.name}")
-                crawler = GenericWebCrawler(site_config)
+                crawler = GenericWebCrawler(site_config, auth_manager=self.auth_manager)
                 articles = await crawler.crawl_site()
                 results[site_config.id] = articles
                 
@@ -971,7 +1002,7 @@ class MultiSiteCrawler:
         if not site_config:
             raise ValueError(f"Site with ID {site_id} not found")
         
-        crawler = GenericWebCrawler(site_config, self.progress_manager, job_id)
+        crawler = GenericWebCrawler(site_config, self.progress_manager, job_id, self.auth_manager)
         articles = await crawler.crawl_site()
         
         # Save individual site results

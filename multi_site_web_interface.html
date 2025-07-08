@@ -395,6 +395,65 @@
                         </div>
                     </div>
 
+                    <div class="field">
+                        <label class="label">Authentication</label>
+                        <div class="field">
+                            <div class="control">
+                                <label class="checkbox">
+                                    <input type="checkbox" name="requires_sso" onchange="toggleSSO(this)">
+                                    Requires SSO Authentication
+                                </label>
+                            </div>
+                        </div>
+                        <div class="sso-fields" style="display: none;">
+                            <div class="columns">
+                                <div class="column is-half">
+                                    <div class="field">
+                                        <label class="label is-small">Login URL</label>
+                                        <div class="control">
+                                            <input class="input" type="url" name="login_url" placeholder="https://example.com/login">
+                                        </div>
+                                        <p class="help is-info">URL where users perform SSO login</p>
+                                    </div>
+                                </div>
+                                <div class="column is-half">
+                                    <div class="field">
+                                        <label class="label is-small">Auth Test URL</label>
+                                        <div class="control">
+                                            <input class="input" type="url" name="auth_test_url" placeholder="https://example.com/dashboard">
+                                        </div>
+                                        <p class="help is-info">URL to test if authentication is still valid</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="columns">
+                                <div class="column is-half">
+                                    <div class="field">
+                                        <label class="label is-small">Session Timeout (hours)</label>
+                                        <div class="control">
+                                            <input class="input" type="number" name="session_timeout_hours" value="24" min="1" max="168">
+                                        </div>
+                                        <p class="help is-info">Hours before re-authentication needed</p>
+                                    </div>
+                                </div>
+                                <div class="column is-half">
+                                    <div class="field">
+                                        <label class="label is-small">Authentication Type</label>
+                                        <div class="control">
+                                            <div class="select is-fullwidth">
+                                                <select name="auth_type">
+                                                    <option value="sso">SSO</option>
+                                                    <option value="basic">Basic Auth</option>
+                                                    <option value="oauth">OAuth</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="columns">
                         <div class="column">
                             <div class="field">
@@ -582,6 +641,65 @@
                         </div>
                     </div>
 
+                    <div class="field">
+                        <label class="label">Authentication</label>
+                        <div class="field">
+                            <div class="control">
+                                <label class="checkbox">
+                                    <input type="checkbox" name="requires_sso" onchange="toggleSSO(this)">
+                                    Requires SSO Authentication
+                                </label>
+                            </div>
+                        </div>
+                        <div class="sso-fields" style="display: none;">
+                            <div class="columns">
+                                <div class="column is-half">
+                                    <div class="field">
+                                        <label class="label is-small">Login URL</label>
+                                        <div class="control">
+                                            <input class="input" type="url" name="login_url" placeholder="https://example.com/login">
+                                        </div>
+                                        <p class="help is-info">URL where users perform SSO login</p>
+                                    </div>
+                                </div>
+                                <div class="column is-half">
+                                    <div class="field">
+                                        <label class="label is-small">Auth Test URL</label>
+                                        <div class="control">
+                                            <input class="input" type="url" name="auth_test_url" placeholder="https://example.com/dashboard">
+                                        </div>
+                                        <p class="help is-info">URL to test if authentication is still valid</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="columns">
+                                <div class="column is-half">
+                                    <div class="field">
+                                        <label class="label is-small">Session Timeout (hours)</label>
+                                        <div class="control">
+                                            <input class="input" type="number" name="session_timeout_hours" value="24" min="1" max="168">
+                                        </div>
+                                        <p class="help is-info">Hours before re-authentication needed</p>
+                                    </div>
+                                </div>
+                                <div class="column is-half">
+                                    <div class="field">
+                                        <label class="label is-small">Authentication Type</label>
+                                        <div class="control">
+                                            <div class="select is-fullwidth">
+                                                <select name="auth_type">
+                                                    <option value="sso">SSO</option>
+                                                    <option value="basic">Basic Auth</option>
+                                                    <option value="oauth">OAuth</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="columns">
                         <div class="column">
                             <div class="field">
@@ -707,6 +825,15 @@
             showModal('add-site-modal');
         }
 
+        function toggleSSO(checkbox) {
+            const ssoFields = checkbox.closest('form').querySelector('.sso-fields');
+            if (checkbox.checked) {
+                ssoFields.style.display = 'block';
+            } else {
+                ssoFields.style.display = 'none';
+            }
+        }
+
         function showLoading(message = 'Loading...') {
             document.getElementById('loading-text').textContent = message;
             showModal('loading-modal');
@@ -777,6 +904,15 @@
                                         <span class="tag crawl-status ${statusClass}">${site.last_crawl_status || 'never'}</span>
                                     </div>
                                     
+                                    ${site.auth_config && site.auth_config.requires_sso ? `
+                                    <div class="tags has-addons">
+                                        <span class="tag">Auth</span>
+                                        <span class="tag" id="auth-status-${site.id}">
+                                            <i class="fas fa-sync fa-spin"></i> Checking...
+                                        </span>
+                                    </div>
+                                    ` : ''}
+                                    
                                     <div class="columns is-mobile is-multiline">
                                         <div class="column is-half">
                                             <span class="has-text-weight-bold">${site.total_articles || 0}</span>
@@ -800,6 +936,14 @@
                                     </span>
                                     <span>Crawl</span>
                                 </a>
+                                ${site.auth_config && site.auth_config.requires_sso ? `
+                                <a class="card-footer-item" onclick="setupAuth('${site.id}')">
+                                    <span class="icon">
+                                        <i class="fas fa-key"></i>
+                                    </span>
+                                    <span>Setup Auth</span>
+                                </a>
+                                ` : ''}
                                 <a class="card-footer-item" onclick="editSite('${site.id}')">
                                     <span class="icon">
                                         <i class="fas fa-edit"></i>
@@ -934,6 +1078,13 @@
                     respect_robots_txt: formData.get('respect_robots_txt') === 'on',
                     follow_redirects: formData.get('follow_redirects') === 'on'
                 },
+                auth_config: {
+                    requires_sso: formData.get('requires_sso') === 'on',
+                    login_url: formData.get('login_url') || null,
+                    auth_test_url: formData.get('auth_test_url') || null,
+                    session_timeout_hours: parseInt(formData.get('session_timeout_hours')) || 24,
+                    auth_type: formData.get('auth_type') || 'sso'
+                },
                 selectors: {
                     title: formData.get('title_selector') || null,
                     content: formData.get('content_selector') || null
@@ -1064,6 +1215,13 @@
                     timeout_seconds: parseInt(formData.get('timeout_seconds')),
                     respect_robots_txt: formData.get('respect_robots_txt') === 'on',
                     follow_redirects: formData.get('follow_redirects') === 'on'
+                },
+                auth_config: {
+                    requires_sso: formData.get('requires_sso') === 'on',
+                    login_url: formData.get('login_url') || null,
+                    auth_test_url: formData.get('auth_test_url') || null,
+                    session_timeout_hours: parseInt(formData.get('session_timeout_hours')) || 24,
+                    auth_type: formData.get('auth_type') || 'sso'
                 },
                 selectors: {
                     title: formData.get('title_selector') || null,

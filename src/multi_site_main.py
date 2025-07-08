@@ -19,6 +19,7 @@ from site_config import SiteConfig, SiteConfigManager, create_site_from_template
 from generic_crawler import MultiSiteCrawler
 from multi_site_vector_store import MultiSiteVectorStore, MultiSiteVectorStoreManager
 from site_management_api import create_site_management_api
+from auth_manager import AuthenticationManager
 import uvicorn
 from dotenv import load_dotenv
 
@@ -42,7 +43,8 @@ class MultiSiteRAGSystem:
         # SiteConfigManager expects a file path, not a directory
         config_file = f"{config_dir}/sites_config.json" if config_dir != "configs" else "data/sites_config.json"
         self.site_config_manager = SiteConfigManager(config_file)
-        self.crawler = MultiSiteCrawler(self.site_config_manager)
+        self.auth_manager = AuthenticationManager()
+        self.crawler = MultiSiteCrawler(self.site_config_manager, auth_manager=self.auth_manager)
         self.vector_store = MultiSiteVectorStore()
         self.vector_store_manager = MultiSiteVectorStoreManager(
             self.vector_store, 
@@ -238,6 +240,76 @@ class MultiSiteRAGSystem:
             for site in sites
         ]
     
+    async def setup_site_authentication(self, site_id: str, headless: bool = False):
+        """Setup authentication for a site"""
+        site_config = self.site_config_manager.get_site(site_id)
+        if not site_config:
+            print(f"Error: Site with ID '{site_id}' not found")
+            return
+        
+        if not site_config.auth_config.requires_sso:
+            print(f"Site '{site_config.name}' does not require SSO authentication")
+            return
+        
+        print(f"Setting up authentication for: {site_config.name}")
+        print(f"Base URL: {site_config.base_url}")
+        
+        success = await self.auth_manager.setup_authentication(site_config, headless=headless)
+        
+        if success:
+            print("✅ Authentication setup completed successfully")
+            print("You can now crawl this site with authenticated access")
+        else:
+            print("❌ Authentication setup failed")
+            print("Please check the logs for more details")
+    
+    async def test_site_authentication(self, site_id: str):
+        """Test authentication status for a site"""
+        site_config = self.site_config_manager.get_site(site_id)
+        if not site_config:
+            print(f"Error: Site with ID '{site_id}' not found")
+            return
+        
+        if not site_config.auth_config.requires_sso:
+            print(f"Site '{site_config.name}' does not require SSO authentication")
+            return
+        
+        print(f"Testing authentication for: {site_config.name}")
+        
+        auth_status = await self.auth_manager.check_authentication_status(site_config)
+        
+        print(f"Authentication Status: {'✅ Authenticated' if auth_status.is_authenticated else '❌ Not Authenticated'}")
+        print(f"Last Check: {auth_status.last_check}")
+        if auth_status.session_expires:
+            print(f"Session Expires: {auth_status.session_expires}")
+        if auth_status.error_message:
+            print(f"Error: {auth_status.error_message}")
+        print(f"Profile Path: {auth_status.profile_path}")
+    
+    async def refresh_site_authentication(self, site_id: str, headless: bool = False):
+        """Refresh authentication for a site"""
+        site_config = self.site_config_manager.get_site(site_id)
+        if not site_config:
+            print(f"Error: Site with ID '{site_id}' not found")
+            return
+        
+        if not site_config.auth_config.requires_sso:
+            print(f"Site '{site_config.name}' does not require SSO authentication")
+            return
+        
+        print(f"Refreshing authentication for: {site_config.name}")
+        
+        # Clear existing status
+        self.auth_manager.clear_auth_status(site_id)
+        
+        # Setup fresh authentication
+        success = await self.auth_manager.setup_authentication(site_config, headless=headless)
+        
+        if success:
+            print("✅ Authentication refreshed successfully")
+        else:
+            print("❌ Authentication refresh failed")
+    
     def backup_system(self, backup_dir: str = "backups"):
         """Backup the entire system"""
         backup_path = Path(backup_dir) / f"system_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -276,7 +348,7 @@ async def main():
     parser = argparse.ArgumentParser(description="Multi-Site RAG System")
     parser.add_argument("command", choices=[
         "setup", "add-site", "crawl", "crawl-all", "sync", "search", 
-        "stats", "list", "api", "backup"
+        "stats", "list", "api", "backup", "setup-auth", "test-auth", "refresh-auth"
     ], help="Command to execute")
     
     # Site management
@@ -299,6 +371,9 @@ async def main():
     parser.add_argument("--host", default="0.0.0.0", help="API host")
     parser.add_argument("--port", type=int, default=8001, help="API port")
     parser.add_argument("--reload", action="store_true", help="Enable API reload")
+    
+    # Authentication
+    parser.add_argument("--headless", action="store_true", help="Run auth setup in headless mode")
     
     # General
     parser.add_argument("--config-dir", default="configs", help="Configuration directory")
@@ -409,6 +484,27 @@ async def main():
     elif args.command == "backup":
         backup_path = system.backup_system(args.backup_dir)
         print(f"System backup created: {backup_path}")
+    
+    elif args.command == "setup-auth":
+        if not args.site_id:
+            print("Error: --site-id is required for authentication setup")
+            return
+        
+        await system.setup_site_authentication(args.site_id, headless=args.headless)
+    
+    elif args.command == "test-auth":
+        if not args.site_id:
+            print("Error: --site-id is required for authentication test")
+            return
+        
+        await system.test_site_authentication(args.site_id)
+    
+    elif args.command == "refresh-auth":
+        if not args.site_id:
+            print("Error: --site-id is required for authentication refresh")
+            return
+        
+        await system.refresh_site_authentication(args.site_id, headless=args.headless)
 
 
 if __name__ == "__main__":

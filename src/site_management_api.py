@@ -14,10 +14,11 @@ import uvicorn
 
 from site_config import (
     SiteConfig, SiteConfigManager, CrawlStrategy, ContentType, 
-    SiteSelectors, CrawlLimits, create_site_from_template
+    SiteSelectors, CrawlLimits, AuthConfig, create_site_from_template
 )
 from generic_crawler import GenericWebCrawler, MultiSiteCrawler
 from crawl_progress import CrawlProgressManager, JobProgress, CrawlJobStatus, SiteCrawlStatus
+from auth_manager import AuthenticationManager, AuthStatus
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,7 @@ class SiteConfigRequest(BaseModel):
     crawl_strategy: CrawlStrategy = CrawlStrategy.BREADTH_FIRST
     content_type: ContentType = ContentType.GENERAL
     limits: CrawlLimitsRequest = Field(default_factory=CrawlLimitsRequest)
+    auth_config: AuthConfigRequest = Field(default_factory=AuthConfigRequest)
     selectors: SiteSelectorsRequest = Field(default_factory=SiteSelectorsRequest)
     
     allowed_patterns: List[str] = Field(default_factory=list, max_items=20)
@@ -78,6 +80,29 @@ class SiteConfigRequest(BaseModel):
         if 'chunk_size' in values and v >= values['chunk_size']:
             raise ValueError("Chunk overlap must be less than chunk size")
         return v
+
+class AuthConfigRequest(BaseModel):
+    requires_sso: bool = False
+    user_data_dir: Optional[str] = None
+    login_url: Optional[str] = None
+    auth_test_url: Optional[str] = None
+    session_timeout_hours: int = Field(24, ge=1, le=168)  # 1 hour to 1 week
+    auth_type: str = Field("sso", pattern=r'^(sso|basic|oauth)$')
+
+class AuthConfigResponse(BaseModel):
+    requires_sso: bool
+    user_data_dir: Optional[str]
+    login_url: Optional[str]
+    auth_test_url: Optional[str]
+    session_timeout_hours: int
+    auth_type: str
+
+class AuthStatusResponse(BaseModel):
+    is_authenticated: bool
+    last_check: Optional[str] = None
+    session_expires: Optional[str] = None
+    error_message: Optional[str] = None
+    profile_path: Optional[str] = None
 
 class CrawlLimitsResponse(BaseModel):
     max_articles: int
@@ -111,6 +136,7 @@ class SiteConfigResponse(BaseModel):
     crawl_strategy: str
     content_type: str
     limits: CrawlLimitsResponse
+    auth_config: AuthConfigResponse
     selectors: SiteSelectorsResponse
     allowed_patterns: List[str]
     blocked_patterns: List[str]
@@ -328,6 +354,7 @@ class CrawlJobManager:
 # Global instances
 job_manager = CrawlJobManager()
 config_manager = SiteConfigManager()
+auth_manager = AuthenticationManager()
 
 def create_site_management_api() -> FastAPI:
     """Create the site management API"""
@@ -379,6 +406,14 @@ def create_site_management_api() -> FastAPI:
                         enable_parallel_processing=site.limits.enable_parallel_processing,
                         batch_size=site.limits.batch_size,
                         thread_pool_size=site.limits.thread_pool_size
+                    ),
+                    auth_config=AuthConfigResponse(
+                        requires_sso=site.auth_config.requires_sso,
+                        user_data_dir=site.auth_config.user_data_dir,
+                        login_url=site.auth_config.login_url,
+                        auth_test_url=site.auth_config.auth_test_url,
+                        session_timeout_hours=site.auth_config.session_timeout_hours,
+                        auth_type=site.auth_config.auth_type
                     ),
                     selectors=SiteSelectorsResponse(
                         title=site.selectors.title,
@@ -473,6 +508,7 @@ def create_site_management_api() -> FastAPI:
                 crawl_strategy=site_request.crawl_strategy,
                 content_type=site_request.content_type,
                 limits=CrawlLimits(**site_request.limits.dict()),
+                auth_config=AuthConfig(**site_request.auth_config.dict()),
                 selectors=SiteSelectors(**site_request.selectors.dict()),
                 allowed_patterns=site_request.allowed_patterns,
                 blocked_patterns=site_request.blocked_patterns,
@@ -508,6 +544,14 @@ def create_site_management_api() -> FastAPI:
                     enable_parallel_processing=site.limits.enable_parallel_processing,
                     batch_size=site.limits.batch_size,
                     thread_pool_size=site.limits.thread_pool_size
+                ),
+                auth_config=AuthConfigResponse(
+                    requires_sso=site.auth_config.requires_sso,
+                    user_data_dir=site.auth_config.user_data_dir,
+                    login_url=site.auth_config.login_url,
+                    auth_test_url=site.auth_config.auth_test_url,
+                    session_timeout_hours=site.auth_config.session_timeout_hours,
+                    auth_type=site.auth_config.auth_type
                 ),
                 selectors=SiteSelectorsResponse(
                     title=site.selectors.title,
@@ -587,6 +631,14 @@ def create_site_management_api() -> FastAPI:
                     batch_size=site.limits.batch_size,
                     thread_pool_size=site.limits.thread_pool_size
                 ),
+                auth_config=AuthConfigResponse(
+                    requires_sso=site.auth_config.requires_sso,
+                    user_data_dir=site.auth_config.user_data_dir,
+                    login_url=site.auth_config.login_url,
+                    auth_test_url=site.auth_config.auth_test_url,
+                    session_timeout_hours=site.auth_config.session_timeout_hours,
+                    auth_type=site.auth_config.auth_type
+                ),
                 selectors=SiteSelectorsResponse(
                     title=site.selectors.title,
                     content=site.selectors.content,
@@ -664,6 +716,14 @@ def create_site_management_api() -> FastAPI:
                     enable_parallel_processing=site.limits.enable_parallel_processing,
                     batch_size=site.limits.batch_size,
                     thread_pool_size=site.limits.thread_pool_size
+                ),
+                auth_config=AuthConfigResponse(
+                    requires_sso=site.auth_config.requires_sso,
+                    user_data_dir=site.auth_config.user_data_dir,
+                    login_url=site.auth_config.login_url,
+                    auth_test_url=site.auth_config.auth_test_url,
+                    session_timeout_hours=site.auth_config.session_timeout_hours,
+                    auth_type=site.auth_config.auth_type
                 ),
                 selectors=SiteSelectorsResponse(
                     title=site.selectors.title,
@@ -1062,6 +1122,125 @@ def create_site_management_api() -> FastAPI:
             "timestamp": datetime.now().isoformat()
         }
     
+    # Authentication endpoints
+    @app.get("/auth/{site_id}/status", response_model=AuthStatusResponse)
+    async def get_auth_status(site_id: str):
+        """Get authentication status for a site"""
+        try:
+            site_config = config_manager.get_site(site_id)
+            if not site_config:
+                raise HTTPException(status_code=404, detail="Site not found")
+            
+            if not site_config.auth_config.requires_sso:
+                raise HTTPException(status_code=400, detail="Site does not require SSO authentication")
+            
+            auth_status = await auth_manager.check_authentication_status(site_config)
+            
+            return AuthStatusResponse(
+                is_authenticated=auth_status.is_authenticated,
+                last_check=auth_status.last_check.isoformat() if auth_status.last_check else None,
+                session_expires=auth_status.session_expires.isoformat() if auth_status.session_expires else None,
+                error_message=auth_status.error_message,
+                profile_path=auth_status.profile_path
+            )
+        except Exception as e:
+            logger.error(f"Error checking auth status for site {site_id}: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+    
+    @app.post("/auth/{site_id}/setup")
+    async def setup_auth(site_id: str, headless: bool = Query(True)):
+        """Setup authentication for a site"""
+        try:
+            site_config = config_manager.get_site(site_id)
+            if not site_config:
+                raise HTTPException(status_code=404, detail="Site not found")
+            
+            if not site_config.auth_config.requires_sso:
+                raise HTTPException(status_code=400, detail="Site does not require SSO authentication")
+            
+            success = await auth_manager.setup_authentication(site_config, headless=headless)
+            
+            if success:
+                return {"message": "Authentication setup completed successfully", "success": True}
+            else:
+                return {"message": "Authentication setup failed", "success": False}
+                
+        except Exception as e:
+            logger.error(f"Error setting up auth for site {site_id}: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+    
+    @app.post("/auth/{site_id}/refresh")
+    async def refresh_auth(site_id: str, headless: bool = Query(True)):
+        """Refresh authentication for a site"""
+        try:
+            site_config = config_manager.get_site(site_id)
+            if not site_config:
+                raise HTTPException(status_code=404, detail="Site not found")
+            
+            if not site_config.auth_config.requires_sso:
+                raise HTTPException(status_code=400, detail="Site does not require SSO authentication")
+            
+            # Clear existing auth status
+            auth_manager.clear_auth_status(site_id)
+            
+            # Setup fresh authentication
+            success = await auth_manager.setup_authentication(site_config, headless=headless)
+            
+            if success:
+                return {"message": "Authentication refreshed successfully", "success": True}
+            else:
+                return {"message": "Authentication refresh failed", "success": False}
+                
+        except Exception as e:
+            logger.error(f"Error refreshing auth for site {site_id}: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+    
+    @app.delete("/auth/{site_id}")
+    async def clear_auth(site_id: str):
+        """Clear authentication status for a site"""
+        try:
+            site_config = config_manager.get_site(site_id)
+            if not site_config:
+                raise HTTPException(status_code=404, detail="Site not found")
+            
+            success = auth_manager.clear_auth_status(site_id)
+            
+            if success:
+                return {"message": "Authentication status cleared successfully", "success": True}
+            else:
+                return {"message": "No authentication status found for this site", "success": False}
+                
+        except Exception as e:
+            logger.error(f"Error clearing auth for site {site_id}: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+    
+    @app.get("/auth/sites")
+    async def list_auth_sites():
+        """List all sites with authentication status"""
+        try:
+            auth_sites = auth_manager.list_auth_sites()
+            
+            result = {}
+            for site_id, auth_status in auth_sites.items():
+                site_config = config_manager.get_site(site_id)
+                if site_config:
+                    result[site_id] = {
+                        "site_name": site_config.name,
+                        "auth_status": AuthStatusResponse(
+                            is_authenticated=auth_status.is_authenticated,
+                            last_check=auth_status.last_check.isoformat() if auth_status.last_check else None,
+                            session_expires=auth_status.session_expires.isoformat() if auth_status.session_expires else None,
+                            error_message=auth_status.error_message,
+                            profile_path=auth_status.profile_path
+                        ).dict()
+                    }
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error listing auth sites: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+    
     return app
 
 async def run_crawl_job(job_id: str, site_ids: List[str], force_recrawl: bool = False):
@@ -1074,7 +1253,7 @@ async def run_crawl_job(job_id: str, site_ids: List[str], force_recrawl: bool = 
         
         # Create multi-site crawler with progress tracking
         progress_manager = job_manager.progress_manager
-        multi_crawler = MultiSiteCrawler(config_manager, progress_manager)
+        multi_crawler = MultiSiteCrawler(config_manager, progress_manager, auth_manager)
         
         # Start crawling
         results = {}

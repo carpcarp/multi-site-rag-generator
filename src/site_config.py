@@ -49,6 +49,17 @@ class SiteSelectors:
 
 
 @dataclass
+class AuthConfig:
+    """Authentication configuration for SSO-protected sites"""
+    requires_sso: bool = False
+    user_data_dir: Optional[str] = None
+    login_url: Optional[str] = None
+    auth_test_url: Optional[str] = None
+    session_timeout_hours: int = 24
+    auth_type: str = "sso"  # sso, basic, oauth, etc.
+
+
+@dataclass
 class CrawlLimits:
     """Limits and constraints for crawling operations"""
     max_articles: int = 10000
@@ -81,6 +92,9 @@ class SiteConfig:
     crawl_strategy: CrawlStrategy = CrawlStrategy.BREADTH_FIRST
     content_type: ContentType = ContentType.GENERAL
     limits: CrawlLimits = field(default_factory=CrawlLimits)
+    
+    # Authentication configuration
+    auth_config: AuthConfig = field(default_factory=AuthConfig)
     
     # Content extraction
     selectors: SiteSelectors = field(default_factory=SiteSelectors)
@@ -149,6 +163,9 @@ class SiteConfig:
         
         if 'selectors' in data and isinstance(data['selectors'], dict):
             data['selectors'] = SiteSelectors(**data['selectors'])
+        
+        if 'auth_config' in data and isinstance(data['auth_config'], dict):
+            data['auth_config'] = AuthConfig(**data['auth_config'])
         
         return cls(**data)
     
@@ -263,6 +280,10 @@ class SiteConfigManager:
         if 'selectors' in updates and isinstance(updates['selectors'], dict):
             site.selectors = SiteSelectors(**updates['selectors'])
             del updates['selectors']
+        
+        if 'auth_config' in updates and isinstance(updates['auth_config'], dict):
+            site.auth_config = AuthConfig(**updates['auth_config'])
+            del updates['auth_config']
         
         # Handle enum conversions
         if 'crawl_strategy' in updates:
