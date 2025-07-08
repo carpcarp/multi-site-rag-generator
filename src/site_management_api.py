@@ -800,6 +800,33 @@ def create_site_management_api() -> FastAPI:
             "sites_count": len(resumable_sites)
         }
     
+    @app.post("/crawl/{job_id}/start")
+    async def start_pending_job(job_id: str, background_tasks: BackgroundTasks):
+        """Start a pending crawl job"""
+        job = job_manager.get_job(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Crawl job not found")
+        
+        if job['status'] != 'pending':
+            raise HTTPException(status_code=400, detail="Job is not in pending state")
+        
+        # Update job status to running
+        job_manager.update_job(job_id, {'status': 'running'})
+        
+        # Start background crawling task
+        background_tasks.add_task(
+            run_crawl_job,
+            job_id,
+            job['site_ids'],
+            False  # force_recrawl
+        )
+        
+        return {
+            "message": f"Crawl job {job_id} started successfully",
+            "status": "running",
+            "site_ids": job['site_ids']
+        }
+    
     @app.get("/crawl/jobs")
     async def list_crawl_jobs():
         """List all crawl jobs"""
@@ -925,6 +952,9 @@ async def run_crawl_job(job_id: str, site_ids: List[str], force_recrawl: bool = 
     """Background task to run a crawl job with progress tracking"""
     try:
         logger.info(f"Starting crawl job {job_id} for sites: {site_ids}")
+        
+        # Update job status to running
+        job_manager.update_job(job_id, {'status': 'running'})
         
         # Create multi-site crawler with progress tracking
         progress_manager = job_manager.progress_manager

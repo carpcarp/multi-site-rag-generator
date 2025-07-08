@@ -884,8 +884,25 @@
                     `;
                     break;
                     
+                case 'pending':
+                    controls += `
+                        <p class="control">
+                            <button class="button is-primary is-small" onclick="startJob('${jobId}')">
+                                <span class="icon"><i class="fas fa-play"></i></span>
+                                <span>Start</span>
+                            </button>
+                        </p>
+                        <p class="control">
+                            <button class="button is-danger is-small" onclick="stopJob('${jobId}')">
+                                <span class="icon"><i class="fas fa-times"></i></span>
+                                <span>Cancel</span>
+                            </button>
+                        </p>
+                    `;
+                    break;
+                    
                 default:
-                    // No controls for pending or unknown status
+                    // No controls for unknown status
                     break;
             }
             
@@ -1334,6 +1351,32 @@
             } catch (error) {
                 console.error('Error resuming job:', error);
                 showNotification('Error resuming job', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function startJob(jobId) {
+            try {
+                showLoading('Starting job...');
+                const response = await fetch(`${API_BASE}/crawl/${jobId}/start`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showNotification(`Job started: ${result.message}`, 'success');
+                    loadCrawlJobs(); // Refresh jobs list to show updated status
+                } else {
+                    showNotification(`Error starting job: ${result.detail}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error starting job:', error);
+                showNotification('Error starting job', 'error');
             } finally {
                 hideLoading();
             }
