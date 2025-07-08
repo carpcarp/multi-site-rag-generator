@@ -1,1318 +1,759 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Multi-Site RAG Manager</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root {
-            /* Light theme colors */
-            --bg-primary: #f5f5f5;
-            --bg-secondary: #ffffff;
-            --bg-tertiary: #f8f9fa;
-            --text-primary: #333333;
-            --text-secondary: #7f8c8d;
-            --text-tertiary: #555555;
-            --accent-primary: #3498db;
-            --accent-secondary: #2980b9;
-            --accent-tertiary: #2c3e50;
-            --success: #27ae60;
-            --success-bg: #d4edda;
-            --success-text: #155724;
-            --warning: #f39c12;
-            --warning-bg: #fff3cd;
-            --warning-text: #856404;
-            --danger: #e74c3c;
-            --danger-bg: #f8d7da;
-            --danger-text: #721c24;
-            --border-color: #ddd;
-            --shadow: rgba(0,0,0,0.1);
-            --shadow-light: rgba(0,0,0,0.05);
+        .hero.is-dark {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
-
-        [data-theme="dark"] {
-            /* Dark theme colors */
-            --bg-primary: #1a1a1a;
-            --bg-secondary: #2d2d2d;
-            --bg-tertiary: #333333;
-            --text-primary: #e0e0e0;
-            --text-secondary: #b0b0b0;
-            --text-tertiary: #cccccc;
-            --accent-primary: #4a9eff;
-            --accent-secondary: #357abd;
-            --accent-tertiary: #4a6fa5;
-            --success: #2ecc71;
-            --success-bg: #1e4d2b;
-            --success-text: #a3e6b4;
-            --warning: #f1c40f;
-            --warning-bg: #4d3c0f;
-            --warning-text: #f7dc6f;
-            --danger: #e74c3c;
-            --danger-bg: #4d1f1f;
-            --danger-text: #f1948a;
-            --border-color: #444;
-            --shadow: rgba(0,0,0,0.3);
-            --shadow-light: rgba(0,0,0,0.15);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            line-height: 1.6;
-            transition: background-color 0.3s ease, color 0.3s ease;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .header {
-            background: var(--bg-secondary);
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px var(--shadow);
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .header-content h1 {
-            color: var(--accent-tertiary);
-            margin-bottom: 10px;
-        }
-
-        .header-content p {
-            color: var(--text-secondary);
-        }
-
-        .theme-toggle {
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            border-radius: 25px;
-            padding: 8px 16px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--text-primary);
-            font-size: 14px;
-            transition: all 0.3s ease;
-        }
-
-        .theme-toggle:hover {
-            background: var(--accent-primary);
-            color: white;
-            border-color: var(--accent-primary);
-        }
-
-        .theme-toggle-icon {
-            font-size: 16px;
-        }
-
-        .nav {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .nav button {
-            padding: 10px 20px;
+        .notification.is-transparent {
+            background: rgba(255, 255, 255, 0.1);
             border: none;
-            border-radius: 5px;
-            background: var(--accent-primary);
-            color: white;
-            cursor: pointer;
-            transition: all 0.3s;
         }
-
-        .nav button:hover {
-            background: var(--accent-secondary);
-        }
-
-        .nav button.active {
-            background: var(--accent-tertiary);
-        }
-
-        .tab-content {
-            display: none;
-            background: var(--bg-secondary);
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px var(--shadow);
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .sites-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-
         .site-card {
-            background: var(--bg-secondary);
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px var(--shadow);
-            border-left: 4px solid var(--accent-primary);
+            transition: transform 0.2s ease;
         }
-
-        .site-card h3 {
-            color: var(--accent-tertiary);
-            margin-bottom: 10px;
+        .site-card:hover {
+            transform: translateY(-2px);
         }
-
-        .site-card .url {
-            color: var(--text-secondary);
-            font-size: 0.9em;
-            margin-bottom: 10px;
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
         }
-
-        .site-card .status {
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 0.8em;
+        .crawl-status {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
             font-weight: bold;
             text-transform: uppercase;
         }
-
-        .status.active {
-            background: var(--success-bg);
-            color: var(--success-text);
-        }
-
-        .status.inactive {
-            background: var(--danger-bg);
-            color: var(--danger-text);
-        }
-
-        .site-actions {
-            margin-top: 15px;
-            display: flex;
-            gap: 10px;
-        }
-
-        .site-actions button {
-            padding: 8px 15px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 0.9em;
-            transition: all 0.3s;
-        }
-
-        .btn-primary {
-            background: var(--accent-primary);
+        .crawl-status.completed {
+            background: #48c774;
             color: white;
         }
-
-        .btn-primary:hover {
-            background: var(--accent-secondary);
-        }
-
-        .btn-success {
-            background: var(--success);
+        .crawl-status.failed {
+            background: #f14668;
             color: white;
         }
-
-        .btn-success:hover {
-            background: var(--success);
-            filter: brightness(0.9);
-        }
-
-        .btn-danger {
-            background: var(--danger);
+        .crawl-status.running {
+            background: #3273dc;
             color: white;
         }
-
-        .btn-danger:hover {
-            background: var(--danger);
-            filter: brightness(0.9);
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: var(--accent-tertiary);
-        }
-
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid var(--border-color);
-            border-radius: 5px;
-            font-size: 16px;
-            background: var(--bg-secondary);
-            color: var(--text-primary);
-            transition: border-color 0.3s ease;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: var(--accent-primary);
-        }
-
-        .form-group textarea {
-            height: 100px;
-            resize: vertical;
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-        }
-
-        .modal-content {
-            background: var(--bg-secondary);
-            margin: 5% auto;
-            padding: 20px;
-            border-radius: 10px;
-            width: 80%;
-            max-width: 600px;
-            max-height: 80vh;
-            overflow-y: auto;
-            border: 1px solid var(--border-color);
-        }
-
-        .close {
-            color: var(--text-secondary);
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: color 0.3s ease;
-        }
-
-        .close:hover {
-            color: var(--text-primary);
-        }
-
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 20px;
-        }
-
-        .spinner {
-            border: 4px solid var(--border-color);
-            border-top: 4px solid var(--accent-primary);
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 10px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .alert {
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 5px;
-        }
-
-        .alert-success {
-            background: var(--success-bg);
-            color: var(--success-text);
-            border: 1px solid var(--success);
-        }
-
-        .alert-error {
-            background: var(--danger-bg);
-            color: var(--danger-text);
-            border: 1px solid var(--danger);
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-
-        .stat-card {
-            background: var(--bg-secondary);
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px var(--shadow);
-            text-align: center;
-        }
-
-        .stat-card h3 {
-            color: var(--accent-primary);
-            font-size: 2em;
-            margin-bottom: 10px;
-        }
-
-        .crawl-jobs {
-            margin-top: 20px;
-        }
-
-        .job-card {
-            background: var(--bg-secondary);
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px var(--shadow);
-            border-left: 4px solid var(--warning);
-        }
-
-        .job-card.completed {
-            border-left-color: var(--success);
-        }
-
-        .job-card.failed {
-            border-left-color: var(--danger);
-        }
-
-        .template-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-
-        .template-card {
-            background: var(--bg-secondary);
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px var(--shadow);
-            cursor: pointer;
-            transition: all 0.3s;
-            border: 1px solid var(--border-color);
-        }
-
-        .template-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px var(--shadow);
-            border-color: var(--accent-primary);
-        }
-
-        .template-card h4 {
-            color: var(--accent-tertiary);
-            margin-bottom: 10px;
-        }
-
-        .template-card p {
-            color: var(--text-secondary);
-            font-size: 0.9em;
-        }
-
-        .search-container {
-            margin-bottom: 30px;
-        }
-
-        .search-results {
-            margin-top: 30px;
-        }
-
-        .search-result {
-            background: var(--bg-secondary);
-            padding: 20px;
-            margin-bottom: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px var(--shadow);
-            border-left: 4px solid var(--success);
-        }
-
-        .search-result h4 {
-            color: var(--accent-tertiary);
-            margin-bottom: 10px;
-        }
-
-        .search-result .answer {
-            background: var(--bg-tertiary);
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 15px;
-            border-left: 3px solid var(--accent-primary);
-        }
-
-        .search-result .sources {
-            margin-top: 15px;
-        }
-
-        .search-result .source {
-            background: var(--success-bg);
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            border-left: 3px solid var(--success);
-        }
-
-        .search-result .source a {
-            color: var(--accent-tertiary);
-            text-decoration: none;
-            font-weight: bold;
-        }
-
-        .search-result .source a:hover {
-            text-decoration: underline;
-            color: var(--accent-primary);
-        }
-
-        .search-result .metadata {
-            display: flex;
-            gap: 15px;
-            margin-top: 10px;
-            font-size: 0.9em;
-            color: var(--text-secondary);
-        }
-
-        .search-result .confidence {
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 0.8em;
-            font-weight: bold;
-        }
-
-        .confidence.high {
-            background: var(--success-bg);
-            color: var(--success-text);
-        }
-
-        .confidence.medium {
-            background: var(--warning-bg);
-            color: var(--warning-text);
-        }
-
-        .confidence.low {
-            background: var(--danger-bg);
-            color: var(--danger-text);
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 10px;
-            }
-            
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-            
-            .nav {
-                flex-direction: column;
-            }
-            
-            .modal-content {
-                width: 95%;
-                margin: 10% auto;
-            }
+        .crawl-status.no_content_found {
+            background: #ffdd57;
+            color: #363636;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <div class="header-content">
-                <h1>🌐 Multi-Site RAG Manager</h1>
-                <p>Manage and crawl multiple websites for your RAG system</p>
-            </div>
-            <button class="theme-toggle" id="theme-toggle">
-                <span class="theme-toggle-icon" id="theme-icon">☀️</span>
-                <span id="theme-text">Light</span>
-            </button>
-        </div>
-
-        <div class="nav">
-            <button class="nav-btn active" data-tab="search">Search</button>
-            <button class="nav-btn" data-tab="sites">Sites</button>
-            <button class="nav-btn" data-tab="add-site">Add Site</button>
-            <button class="nav-btn" data-tab="crawl">Crawl Jobs</button>
-            <button class="nav-btn" data-tab="stats">Statistics</button>
-        </div>
-
-        <!-- Search Tab -->
-        <div id="search" class="tab-content active">
-            <h2>Search Knowledge Base</h2>
-            
-            <div class="search-container">
-                <form id="search-form">
-                    <div class="form-group">
-                        <label for="search-query">Search Query</label>
-                        <input type="text" id="search-query" name="query" placeholder="Enter your question or keywords..." required>
+    <!-- Hero Section -->
+    <section class="hero is-dark">
+        <div class="hero-body">
+            <div class="container">
+                <div class="columns is-vcentered">
+                    <div class="column">
+                        <h1 class="title is-2">
+                            <i class="fas fa-robot mr-3"></i>
+                            Multi-Site RAG Manager
+                        </h1>
+                        <p class="subtitle is-5">
+                            Crawl, index, and search multiple knowledge bases
+                        </p>
                     </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="category-filter">Category Filter (optional)</label>
-                            <select id="category-filter" name="category_filter">
-                                <option value="">All Categories</option>
-                                <option value="Contacts">Contacts</option>
-                                <option value="Companies">Companies</option>
-                                <option value="Deals">Deals</option>
-                                <option value="Service Hub">Service Hub</option>
-                                <option value="Reports">Reports</option>
-                                <option value="Automation">Automation</option>
-                                <option value="Integrations">Integrations</option>
-                                <option value="Getting Started">Getting Started</option>
-                                <option value="General">General</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="max-context">Max Context Length</label>
-                            <input type="number" id="max-context" name="max_context_length" value="4000" min="500" max="10000">
-                        </div>
+                    <div class="column is-narrow">
+                        <button class="button is-light is-outlined" onclick="toggleTheme()">
+                            <span class="icon">
+                                <i class="fas fa-moon"></i>
+                            </span>
+                            <span>Dark Mode</span>
+                        </button>
                     </div>
-                    
-                    <button type="submit" class="btn-primary">Search</button>
-                </form>
+                </div>
             </div>
-            
-            <div id="search-results" class="search-results" style="display: none;">
-                <h3>Search Results</h3>
-                <div id="search-results-content"></div>
-            </div>
-            
-            <div class="loading" id="search-loading" style="display: none;">
-                <div class="spinner"></div>
-                <p>Searching...</p>
-            </div>
+        </div>
+    </section>
+
+    <div class="container mt-6">
+        <!-- Tabs Navigation -->
+        <div class="tabs is-boxed is-medium">
+            <ul>
+                <li class="is-active" data-tab="sites">
+                    <a>
+                        <span class="icon is-small"><i class="fas fa-globe"></i></span>
+                        <span>Sites</span>
+                    </a>
+                </li>
+                <li data-tab="search">
+                    <a>
+                        <span class="icon is-small"><i class="fas fa-search"></i></span>
+                        <span>Search</span>
+                    </a>
+                </li>
+                <li data-tab="jobs">
+                    <a>
+                        <span class="icon is-small"><i class="fas fa-tasks"></i></span>
+                        <span>Crawl Jobs</span>
+                    </a>
+                </li>
+                <li data-tab="stats">
+                    <a>
+                        <span class="icon is-small"><i class="fas fa-chart-bar"></i></span>
+                        <span>Statistics</span>
+                    </a>
+                </li>
+            </ul>
         </div>
 
         <!-- Sites Tab -->
-        <div id="sites" class="tab-content">
-            <div class="loading" id="sites-loading">
-                <div class="spinner"></div>
-                <p>Loading sites...</p>
+        <div id="sites-tab" class="tab-content">
+            <div class="level">
+                <div class="level-left">
+                    <div class="level-item">
+                        <h2 class="title is-4">Site Configurations</h2>
+                    </div>
+                </div>
+                <div class="level-right">
+                    <div class="level-item">
+                        <button class="button is-primary" onclick="showAddSiteModal()">
+                            <span class="icon">
+                                <i class="fas fa-plus"></i>
+                            </span>
+                            <span>Add Site</span>
+                        </button>
+                    </div>
+                </div>
             </div>
-            <div id="sites-container" class="sites-grid"></div>
+
+            <div id="sites-container" class="columns is-multiline">
+                <!-- Sites will be loaded here -->
+            </div>
         </div>
 
-        <!-- Add Site Tab -->
-        <div id="add-site" class="tab-content">
-            <h2>Add New Site</h2>
+        <!-- Search Tab -->
+        <div id="search-tab" class="tab-content is-hidden">
+            <h2 class="title is-4 mb-5">Search Knowledge Base</h2>
             
-            <div class="template-grid" id="templates">
-                <div class="template-card" data-template="documentation">
-                    <h4>📚 Documentation</h4>
-                    <p>For documentation websites (GitBook, Notion, etc.)</p>
+            <div class="field has-addons">
+                <div class="control is-expanded">
+                    <input class="input is-large" type="text" id="search-query" placeholder="Enter your search query...">
                 </div>
-                <div class="template-card" data-template="blog">
-                    <h4>📝 Blog</h4>
-                    <p>For blog and news websites</p>
-                </div>
-                <div class="template-card" data-template="support">
-                    <h4>🛠️ Support</h4>
-                    <p>For support and FAQ websites</p>
-                </div>
-                <div class="template-card" data-template="custom">
-                    <h4>⚙️ Custom</h4>
-                    <p>Configure everything manually</p>
+                <div class="control">
+                    <button class="button is-primary is-large" onclick="performSearch()">
+                        <span class="icon">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <span>Search</span>
+                    </button>
                 </div>
             </div>
 
-            <form id="site-form">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="site-name">Site Name *</label>
-                        <input type="text" id="site-name" name="name" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="site-url">Base URL *</label>
-                        <input type="url" id="site-url" name="base_url" required>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="site-description">Description</label>
-                    <textarea id="site-description" name="description"></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label for="start-urls">Start URLs (one per line) *</label>
-                    <textarea id="start-urls" name="start_urls" required></textarea>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="crawl-strategy">Crawl Strategy</label>
-                        <select id="crawl-strategy" name="crawl_strategy">
-                            <option value="breadth_first">Breadth First</option>
-                            <option value="depth_first">Depth First</option>
-                            <option value="sitemap">Sitemap</option>
-                            <option value="url_list">URL List</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="content-type">Content Type</label>
-                        <select id="content-type" name="content_type">
-                            <option value="general">General</option>
-                            <option value="documentation">Documentation</option>
-                            <option value="blog">Blog</option>
-                            <option value="news">News</option>
-                            <option value="support">Support</option>
-                            <option value="api">API</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="max-articles">Max Articles</label>
-                        <input type="number" id="max-articles" name="max_articles" value="100" min="1" max="10000">
-                    </div>
-                    <div class="form-group">
-                        <label for="max-depth">Max Depth</label>
-                        <input type="number" id="max-depth" name="max_depth" value="3" min="1" max="10">
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="delay-seconds">Delay Between Requests (seconds)</label>
-                        <input type="number" id="delay-seconds" name="delay_seconds" value="1.0" min="0" max="10" step="0.1">
-                    </div>
-                    <div class="form-group">
-                        <label for="timeout-seconds">Request Timeout (seconds)</label>
-                        <input type="number" id="timeout-seconds" name="timeout_seconds" value="30" min="5" max="120">
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="respect-robots" name="respect_robots_txt" checked>
-                            Respect robots.txt
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="follow-redirects" name="follow_redirects" checked>
-                            Follow redirects
-                        </label>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="allowed-patterns">Allowed URL Patterns (regex, one per line)</label>
-                    <textarea id="allowed-patterns" name="allowed_patterns" placeholder=".*\\.html$&#10;/docs/.*"></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label for="blocked-patterns">Blocked URL Patterns (regex, one per line)</label>
-                    <textarea id="blocked-patterns" name="blocked_patterns" placeholder="/admin/.*&#10;.*\\?.*=.*"></textarea>
-                </div>
-
-                <h3>Content Selectors (CSS selectors)</h3>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="title-selector">Title Selector</label>
-                        <input type="text" id="title-selector" name="title_selector" placeholder="h1, .title, #main-title">
-                    </div>
-                    <div class="form-group">
-                        <label for="content-selector">Content Selector</label>
-                        <input type="text" id="content-selector" name="content_selector" placeholder=".content, #main-content, article">
-                    </div>
-                </div>
-
-                <button type="submit" class="btn-primary">Add Site</button>
-            </form>
+            <div id="search-results" class="mt-5">
+                <!-- Search results will appear here -->
+            </div>
         </div>
 
         <!-- Crawl Jobs Tab -->
-        <div id="crawl" class="tab-content">
-            <h2>Crawl Jobs</h2>
-            
-            <div class="form-group">
-                <button id="start-crawl-all" class="btn-success">Start Crawl All Active Sites</button>
+        <div id="jobs-tab" class="tab-content is-hidden">
+            <div class="level">
+                <div class="level-left">
+                    <div class="level-item">
+                        <h2 class="title is-4">Crawl Jobs</h2>
+                    </div>
+                </div>
+                <div class="level-right">
+                    <div class="level-item">
+                        <button class="button is-success" onclick="crawlAllSites()">
+                            <span class="icon">
+                                <i class="fas fa-play"></i>
+                            </span>
+                            <span>Crawl All Sites</span>
+                        </button>
+                    </div>
+                </div>
             </div>
 
-            <div class="crawl-jobs" id="crawl-jobs-container">
-                <div class="loading" id="jobs-loading">
-                    <div class="spinner"></div>
-                    <p>Loading crawl jobs...</p>
-                </div>
+            <div id="crawl-jobs-container">
+                <!-- Crawl jobs will be loaded here -->
             </div>
         </div>
 
         <!-- Statistics Tab -->
-        <div id="stats" class="tab-content">
-            <h2>Statistics</h2>
+        <div id="stats-tab" class="tab-content is-hidden">
+            <h2 class="title is-4 mb-5">System Statistics</h2>
             
-            <div class="stats-grid" id="stats-container">
-                <div class="loading" id="stats-loading">
-                    <div class="spinner"></div>
-                    <p>Loading statistics...</p>
-                </div>
+            <div id="stats-container" class="columns is-multiline">
+                <!-- Statistics will be loaded here -->
             </div>
         </div>
     </div>
 
+    <!-- Add Site Modal -->
+    <div class="modal" id="add-site-modal">
+        <div class="modal-background" onclick="closeModal('add-site-modal')"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Add New Site</p>
+                <button class="delete" onclick="closeModal('add-site-modal')"></button>
+            </header>
+            <section class="modal-card-body">
+                <form id="add-site-form">
+                    <div class="columns">
+                        <div class="column is-half">
+                            <div class="field">
+                                <label class="label">Site Name</label>
+                                <div class="control">
+                                    <input class="input" type="text" name="name" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column is-half">
+                            <div class="field">
+                                <label class="label">Base URL</label>
+                                <div class="control">
+                                    <input class="input" type="url" name="base_url" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="label">Description</label>
+                        <div class="control">
+                            <textarea class="textarea" name="description" rows="2"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="label">Start URLs (one per line)</label>
+                        <div class="control">
+                            <textarea class="textarea" name="start_urls" rows="3" required></textarea>
+                        </div>
+                    </div>
+
+                    <div class="columns">
+                        <div class="column is-half">
+                            <div class="field">
+                                <label class="label">Crawl Strategy</label>
+                                <div class="control">
+                                    <div class="select is-fullwidth">
+                                        <select name="crawl_strategy">
+                                            <option value="breadth_first">Breadth First</option>
+                                            <option value="depth_first">Depth First</option>
+                                            <option value="sitemap">Sitemap</option>
+                                            <option value="url_list">URL List</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column is-half">
+                            <div class="field">
+                                <label class="label">Content Type</label>
+                                <div class="control">
+                                    <div class="select is-fullwidth">
+                                        <select name="content_type">
+                                            <option value="general">General</option>
+                                            <option value="documentation">Documentation</option>
+                                            <option value="news">News</option>
+                                            <option value="blog">Blog</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="label">Limits</label>
+                        <div class="columns">
+                            <div class="column">
+                                <div class="field">
+                                    <label class="label is-small">Max Articles</label>
+                                    <div class="control">
+                                        <input class="input" type="number" name="max_articles" value="1000">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="column">
+                                <div class="field">
+                                    <label class="label is-small">Max Depth</label>
+                                    <div class="control">
+                                        <input class="input" type="number" name="max_depth" value="3">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="column">
+                                <div class="field">
+                                    <label class="label is-small">Delay (seconds)</label>
+                                    <div class="control">
+                                        <input class="input" type="number" step="0.1" name="delay_seconds" value="1.0">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="column">
+                                <div class="field">
+                                    <label class="label is-small">Timeout (seconds)</label>
+                                    <div class="control">
+                                        <input class="input" type="number" name="timeout_seconds" value="30">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="columns">
+                        <div class="column">
+                            <div class="field">
+                                <div class="control">
+                                    <label class="checkbox">
+                                        <input type="checkbox" name="respect_robots_txt">
+                                        Respect robots.txt
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column">
+                            <div class="field">
+                                <div class="control">
+                                    <label class="checkbox">
+                                        <input type="checkbox" name="follow_redirects" checked>
+                                        Follow redirects
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="label">Content Selectors</label>
+                        <div class="columns">
+                            <div class="column">
+                                <div class="field">
+                                    <label class="label is-small">Title Selector</label>
+                                    <div class="control">
+                                        <input class="input" type="text" name="title_selector" placeholder="h1, .title">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="column">
+                                <div class="field">
+                                    <label class="label is-small">Content Selector</label>
+                                    <div class="control">
+                                        <input class="input" type="text" name="content_selector" placeholder="article, .content">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="columns">
+                        <div class="column">
+                            <div class="field">
+                                <label class="label">Allowed Patterns (regex, one per line)</label>
+                                <div class="control">
+                                    <textarea class="textarea" name="allowed_patterns" rows="2" placeholder="/docs/.*&#10;/help/.*"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column">
+                            <div class="field">
+                                <label class="label">Blocked Patterns (regex, one per line)</label>
+                                <div class="control">
+                                    <textarea class="textarea" name="blocked_patterns" rows="2" placeholder="/admin/.*&#10;/private/.*"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </section>
+            <footer class="modal-card-foot">
+                <button class="button is-primary" onclick="handleAddSite()">Add Site</button>
+                <button class="button" onclick="closeModal('add-site-modal')">Cancel</button>
+            </footer>
+        </div>
+    </div>
+
     <!-- Edit Site Modal -->
-    <div id="edit-modal" class="modal">
+    <div class="modal" id="edit-site-modal">
+        <div class="modal-background" onclick="closeModal('edit-site-modal')"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Edit Site Configuration</p>
+                <button class="delete" onclick="closeModal('edit-site-modal')"></button>
+            </header>
+            <section class="modal-card-body">
+                <form id="edit-site-form">
+                    <!-- Same form structure as add-site-form -->
+                    <div class="columns">
+                        <div class="column is-half">
+                            <div class="field">
+                                <label class="label">Site Name</label>
+                                <div class="control">
+                                    <input class="input" type="text" name="name" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column is-half">
+                            <div class="field">
+                                <label class="label">Base URL</label>
+                                <div class="control">
+                                    <input class="input" type="url" name="base_url" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="label">Description</label>
+                        <div class="control">
+                            <textarea class="textarea" name="description" rows="2"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="label">Start URLs (one per line)</label>
+                        <div class="control">
+                            <textarea class="textarea" name="start_urls" rows="3" required></textarea>
+                        </div>
+                    </div>
+
+                    <div class="columns">
+                        <div class="column is-half">
+                            <div class="field">
+                                <label class="label">Crawl Strategy</label>
+                                <div class="control">
+                                    <div class="select is-fullwidth">
+                                        <select name="crawl_strategy">
+                                            <option value="breadth_first">Breadth First</option>
+                                            <option value="depth_first">Depth First</option>
+                                            <option value="sitemap">Sitemap</option>
+                                            <option value="url_list">URL List</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column is-half">
+                            <div class="field">
+                                <label class="label">Content Type</label>
+                                <div class="control">
+                                    <div class="select is-fullwidth">
+                                        <select name="content_type">
+                                            <option value="general">General</option>
+                                            <option value="documentation">Documentation</option>
+                                            <option value="news">News</option>
+                                            <option value="blog">Blog</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="label">Limits</label>
+                        <div class="columns">
+                            <div class="column">
+                                <div class="field">
+                                    <label class="label is-small">Max Articles</label>
+                                    <div class="control">
+                                        <input class="input" type="number" name="max_articles" value="1000">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="column">
+                                <div class="field">
+                                    <label class="label is-small">Max Depth</label>
+                                    <div class="control">
+                                        <input class="input" type="number" name="max_depth" value="3">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="column">
+                                <div class="field">
+                                    <label class="label is-small">Delay (seconds)</label>
+                                    <div class="control">
+                                        <input class="input" type="number" step="0.1" name="delay_seconds" value="1.0">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="column">
+                                <div class="field">
+                                    <label class="label is-small">Timeout (seconds)</label>
+                                    <div class="control">
+                                        <input class="input" type="number" name="timeout_seconds" value="30">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="columns">
+                        <div class="column">
+                            <div class="field">
+                                <div class="control">
+                                    <label class="checkbox">
+                                        <input type="checkbox" name="respect_robots_txt">
+                                        Respect robots.txt
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column">
+                            <div class="field">
+                                <div class="control">
+                                    <label class="checkbox">
+                                        <input type="checkbox" name="follow_redirects" checked>
+                                        Follow redirects
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="label">Content Selectors</label>
+                        <div class="columns">
+                            <div class="column">
+                                <div class="field">
+                                    <label class="label is-small">Title Selector</label>
+                                    <div class="control">
+                                        <input class="input" type="text" name="title_selector" placeholder="h1, .title">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="column">
+                                <div class="field">
+                                    <label class="label is-small">Content Selector</label>
+                                    <div class="control">
+                                        <input class="input" type="text" name="content_selector" placeholder="article, .content">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="columns">
+                        <div class="column">
+                            <div class="field">
+                                <label class="label">Allowed Patterns (regex, one per line)</label>
+                                <div class="control">
+                                    <textarea class="textarea" name="allowed_patterns" rows="2" placeholder="/docs/.*&#10;/help/.*"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column">
+                            <div class="field">
+                                <label class="label">Blocked Patterns (regex, one per line)</label>
+                                <div class="control">
+                                    <textarea class="textarea" name="blocked_patterns" rows="2" placeholder="/admin/.*&#10;/private/.*"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </section>
+            <footer class="modal-card-foot">
+                <button class="button is-primary" onclick="handleEditSite()">Save Changes</button>
+                <button class="button" onclick="closeModal('edit-site-modal')">Cancel</button>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Loading Modal -->
+    <div class="modal" id="loading-modal">
+        <div class="modal-background"></div>
         <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>Edit Site</h2>
-            <form id="edit-form">
-                <input type="hidden" id="edit-site-id">
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="edit-site-name">Site Name *</label>
-                        <input type="text" id="edit-site-name" name="name" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="edit-site-url">Base URL *</label>
-                        <input type="url" id="edit-site-url" name="base_url" required>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="edit-site-description">Description</label>
-                    <textarea id="edit-site-description" name="description"></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label for="edit-start-urls">Start URLs (one per line) *</label>
-                    <textarea id="edit-start-urls" name="start_urls" required></textarea>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="edit-crawl-strategy">Crawl Strategy</label>
-                        <select id="edit-crawl-strategy" name="crawl_strategy">
-                            <option value="breadth_first">Breadth First</option>
-                            <option value="depth_first">Depth First</option>
-                            <option value="sitemap">Sitemap</option>
-                            <option value="url_list">URL List</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="edit-content-type">Content Type</label>
-                        <select id="edit-content-type" name="content_type">
-                            <option value="general">General</option>
-                            <option value="documentation">Documentation</option>
-                            <option value="blog">Blog</option>
-                            <option value="news">News</option>
-                            <option value="support">Support</option>
-                            <option value="api">API</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="edit-max-articles">Max Articles</label>
-                        <input type="number" id="edit-max-articles" name="max_articles" min="1" max="10000">
-                    </div>
-                    <div class="form-group">
-                        <label for="edit-max-depth">Max Depth</label>
-                        <input type="number" id="edit-max-depth" name="max_depth" min="1" max="10">
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="edit-delay-seconds">Delay Between Requests (seconds)</label>
-                        <input type="number" id="edit-delay-seconds" name="delay_seconds" min="0" max="10" step="0.1">
-                    </div>
-                    <div class="form-group">
-                        <label for="edit-timeout-seconds">Request Timeout (seconds)</label>
-                        <input type="number" id="edit-timeout-seconds" name="timeout_seconds" min="5" max="120">
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="edit-respect-robots" name="respect_robots_txt">
-                            Respect robots.txt
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="edit-follow-redirects" name="follow_redirects">
-                            Follow redirects
-                        </label>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="edit-is-active" name="is_active">
-                        Active
-                    </label>
-                </div>
-
-                <div class="form-group">
-                    <label for="edit-allowed-patterns">Allowed URL Patterns (regex, one per line)</label>
-                    <textarea id="edit-allowed-patterns" name="allowed_patterns"></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label for="edit-blocked-patterns">Blocked URL Patterns (regex, one per line)</label>
-                    <textarea id="edit-blocked-patterns" name="blocked_patterns"></textarea>
-                </div>
-
-                <h3>Content Selectors (CSS selectors)</h3>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="edit-title-selector">Title Selector</label>
-                        <input type="text" id="edit-title-selector" name="title_selector">
-                    </div>
-                    <div class="form-group">
-                        <label for="edit-content-selector">Content Selector</label>
-                        <input type="text" id="edit-content-selector" name="content_selector">
-                    </div>
-                </div>
-
-                <button type="submit" class="btn-primary">Update Site</button>
-            </form>
+            <div class="box has-text-centered">
+                <div class="spinner"></div>
+                <p id="loading-text">Loading...</p>
+            </div>
         </div>
     </div>
 
     <script>
-        // Configuration
-        const SITE_API_BASE = 'http://localhost:8001';  // Site management API
-        const RAG_API_BASE = 'http://localhost:8000';   // RAG query API
-        let sites = [];
-        let crawlJobs = [];
-        
-        // Initialize the application
-        document.addEventListener('DOMContentLoaded', function() {
-            setupTheme();
-            setupNavigation();
-            setupModals();
-            setupForms();
-            loadSites();
-            loadCrawlJobs();
-            loadStats();
+        const API_BASE = 'http://localhost:8001';
+        let currentEditingSiteId = null;
+
+        // Tab management
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('is-hidden');
+            });
             
-            // Refresh data every 30 seconds
-            setInterval(() => {
+            // Remove active class from all tab buttons
+            document.querySelectorAll('.tabs li').forEach(li => {
+                li.classList.remove('is-active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName + '-tab').classList.remove('is-hidden');
+            
+            // Add active class to selected tab button
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('is-active');
+            
+            // Load tab-specific content
+            if (tabName === 'sites') {
                 loadSites();
+            } else if (tabName === 'jobs') {
                 loadCrawlJobs();
-                loadStats();
-            }, 30000);
+            } else if (tabName === 'stats') {
+                loadStatistics();
+            }
+        }
+
+        // Tab click handlers
+        document.querySelectorAll('.tabs li').forEach(li => {
+            li.addEventListener('click', () => {
+                const tabName = li.getAttribute('data-tab');
+                showTab(tabName);
+            });
         });
 
-        // Theme management
-        function setupTheme() {
-            const themeToggle = document.getElementById('theme-toggle');
-            const themeIcon = document.getElementById('theme-icon');
-            const themeText = document.getElementById('theme-text');
-            
-            // Load saved theme preference or default to dark
-            const savedTheme = localStorage.getItem('theme') || 'dark';
-            setTheme(savedTheme);
-            
-            // Theme toggle click handler
-            themeToggle.addEventListener('click', function() {
-                const currentTheme = document.documentElement.getAttribute('data-theme');
-                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-                setTheme(newTheme);
-                localStorage.setItem('theme', newTheme);
-            });
-            
-            function setTheme(theme) {
-                document.documentElement.setAttribute('data-theme', theme);
-                
-                if (theme === 'dark') {
-                    themeIcon.textContent = '☀️';
-                    themeText.textContent = 'Light';
-                } else {
-                    themeIcon.textContent = '🌙';
-                    themeText.textContent = 'Dark';
-                }
-            }
-        }
-
-        // Navigation
-        function setupNavigation() {
-            document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const tab = this.dataset.tab;
-                    switchTab(tab);
-                });
-            });
-        }
-
-        function switchTab(tabName) {
-            // Update nav buttons
-            document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-            
-            // Update tab content
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            document.getElementById(tabName).classList.add('active');
-        }
-
         // Modal management
-        function setupModals() {
-            const modal = document.getElementById('edit-modal');
-            const closeBtn = document.querySelector('.close');
-            
-            closeBtn.addEventListener('click', () => {
-                modal.style.display = 'none';
-            });
-            
-            window.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    modal.style.display = 'none';
-                }
-            });
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.add('is-active');
         }
 
-        // Form handling
-        function setupForms() {
-            // Template selection
-            document.querySelectorAll('.template-card').forEach(card => {
-                card.addEventListener('click', function() {
-                    const template = this.dataset.template;
-                    selectTemplate(template);
-                });
-            });
-
-            // Search form
-            document.getElementById('search-form').addEventListener('submit', handleSearch);
-            
-            // Add site form
-            document.getElementById('site-form').addEventListener('submit', handleAddSite);
-            
-            // Edit site form
-            document.getElementById('edit-form').addEventListener('submit', handleEditSite);
-            
-            // Start crawl all button
-            document.getElementById('start-crawl-all').addEventListener('click', startCrawlAll);
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('is-active');
         }
 
-        function selectTemplate(template) {
-            // Remove active class from all templates
-            document.querySelectorAll('.template-card').forEach(card => {
-                card.style.border = 'none';
-            });
-            
-            // Add active class to selected template
-            document.querySelector(`[data-template="${template}"]`).style.border = '2px solid #3498db';
-            
-            // Set form defaults based on template
-            const templates = {
-                documentation: {
-                    content_type: 'documentation',
-                    crawl_strategy: 'breadth_first',
-                    max_articles: 200,
-                    max_depth: 4
-                },
-                blog: {
-                    content_type: 'blog',
-                    crawl_strategy: 'sitemap',
-                    max_articles: 100,
-                    max_depth: 2
-                },
-                support: {
-                    content_type: 'support',
-                    crawl_strategy: 'breadth_first',
-                    max_articles: 150,
-                    max_depth: 3
-                },
-                custom: {
-                    content_type: 'general',
-                    crawl_strategy: 'breadth_first',
-                    max_articles: 100,
-                    max_depth: 3
-                }
-            };
-            
-            const config = templates[template];
-            if (config) {
-                document.getElementById('content-type').value = config.content_type;
-                document.getElementById('crawl-strategy').value = config.crawl_strategy;
-                document.getElementById('max-articles').value = config.max_articles;
-                document.getElementById('max-depth').value = config.max_depth;
-            }
+        function showAddSiteModal() {
+            document.getElementById('add-site-form').reset();
+            showModal('add-site-modal');
+        }
+
+        function showLoading(message = 'Loading...') {
+            document.getElementById('loading-text').textContent = message;
+            showModal('loading-modal');
+        }
+
+        function hideLoading() {
+            closeModal('loading-modal');
         }
 
         // API calls
-        async function apiCall(endpoint, options = {}, apiBase = SITE_API_BASE) {
-            try {
-                const response = await fetch(`${apiBase}${endpoint}`, {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...options.headers
-                    },
-                    ...options
-                });
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
-                }
-                
-                return await response.json();
-            } catch (error) {
-                console.error('API call failed:', error);
-                showAlert('error', `API call failed: ${error.message}`);
-                throw error;
-            }
-        }
-
-        // Load data
         async function loadSites() {
             try {
-                const loading = document.getElementById('sites-loading');
-                loading.style.display = 'block';
-                
-                sites = await apiCall('/sites');
-                renderSites();
-                
-                loading.style.display = 'none';
+                showLoading('Loading sites...');
+                const response = await fetch(`${API_BASE}/sites`);
+                const data = await response.json();
+                displaySites(data.sites || []);
             } catch (error) {
-                console.error('Failed to load sites:', error);
-                document.getElementById('sites-loading').style.display = 'none';
+                console.error('Error loading sites:', error);
+                showNotification('Error loading sites', 'error');
+            } finally {
+                hideLoading();
             }
         }
 
-        async function loadCrawlJobs() {
-            try {
-                const loading = document.getElementById('jobs-loading');
-                loading.style.display = 'block';
-                
-                const response = await apiCall('/crawl/jobs');
-                crawlJobs = response.jobs;
-                renderCrawlJobs();
-                
-                loading.style.display = 'none';
-            } catch (error) {
-                console.error('Failed to load crawl jobs:', error);
-                document.getElementById('jobs-loading').style.display = 'none';
-            }
-        }
-
-        async function loadStats() {
-            try {
-                const loading = document.getElementById('stats-loading');
-                loading.style.display = 'block';
-                
-                const health = await apiCall('/health');
-                renderStats(health);
-                
-                loading.style.display = 'none';
-            } catch (error) {
-                console.error('Failed to load stats:', error);
-                document.getElementById('stats-loading').style.display = 'none';
-            }
-        }
-
-        // Render functions
-        function renderSites() {
+        function displaySites(sites) {
             const container = document.getElementById('sites-container');
-            
+            container.innerHTML = '';
+
             if (sites.length === 0) {
-                container.innerHTML = '<p>No sites configured yet. Add your first site to get started!</p>';
-                return;
-            }
-            
-            container.innerHTML = sites.map(site => `
-                <div class="site-card">
-                    <h3>${site.name}</h3>
-                    <div class="url">${site.base_url}</div>
-                    <div class="status ${site.is_active ? 'active' : 'inactive'}">
-                        ${site.is_active ? 'Active' : 'Inactive'}
-                    </div>
-                    <p><strong>Articles:</strong> ${site.total_articles}</p>
-                    <p><strong>Last Crawl:</strong> ${site.last_crawl_status}</p>
-                    <div class="site-actions">
-                        <button class="btn-primary" onclick="editSite('${site.id}')">Edit</button>
-                        <button class="btn-success" onclick="crawlSite('${site.id}')">Crawl</button>
-                        <button class="btn-danger" onclick="deleteSite('${site.id}')">Delete</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function renderCrawlJobs() {
-            const container = document.getElementById('crawl-jobs-container');
-            
-            if (crawlJobs.length === 0) {
-                container.innerHTML = '<p>No crawl jobs found.</p>';
-                return;
-            }
-            
-            container.innerHTML = crawlJobs.map(job => `
-                <div class="job-card ${job.status}">
-                    <h4>Job ID: ${job.job_id}</h4>
-                    <p><strong>Status:</strong> ${job.status}</p>
-                    <p><strong>Sites:</strong> ${job.site_ids.join(', ')}</p>
-                    <p><strong>Started:</strong> ${new Date(job.started_at).toLocaleString()}</p>
-                    ${job.completed_at ? `<p><strong>Completed:</strong> ${new Date(job.completed_at).toLocaleString()}</p>` : ''}
-                    <p><strong>Articles:</strong> ${job.total_articles || 0}</p>
-                </div>
-            `).join('');
-        }
-
-        function renderStats(health) {
-            const container = document.getElementById('stats-container');
-            
-            container.innerHTML = `
-                <div class="stat-card">
-                    <h3>${health.total_sites}</h3>
-                    <p>Total Sites</p>
-                </div>
-                <div class="stat-card">
-                    <h3>${health.active_sites}</h3>
-                    <p>Active Sites</p>
-                </div>
-                <div class="stat-card">
-                    <h3>${health.active_crawl_jobs}</h3>
-                    <p>Active Crawl Jobs</p>
-                </div>
-                <div class="stat-card">
-                    <h3>${health.status}</h3>
-                    <p>System Status</p>
-                </div>
-            `;
-        }
-
-        // Search functionality
-        async function handleSearch(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(e.target);
-            const query = formData.get('query');
-            const categoryFilter = formData.get('category_filter');
-            const maxContextLength = parseInt(formData.get('max_context_length'));
-            
-            if (!query || query.trim() === '') {
-                showAlert('error', 'Please enter a search query.');
-                return;
-            }
-            
-            const searchResults = document.getElementById('search-results');
-            const searchLoading = document.getElementById('search-loading');
-            const searchResultsContent = document.getElementById('search-results-content');
-            
-            try {
-                // Show loading
-                searchLoading.style.display = 'block';
-                searchResults.style.display = 'none';
-                
-                // Prepare request data
-                const requestData = {
-                    question: query,
-                    max_context_length: maxContextLength
-                };
-                
-                if (categoryFilter) {
-                    requestData.category_filter = categoryFilter;
-                }
-                
-                // Make API call to RAG system
-                const response = await apiCall('/query', {
-                    method: 'POST',
-                    body: JSON.stringify(requestData)
-                }, RAG_API_BASE);
-                
-                // Hide loading
-                searchLoading.style.display = 'none';
-                
-                // Display results
-                displaySearchResults(response);
-                searchResults.style.display = 'block';
-                
-            } catch (error) {
-                console.error('Search failed:', error);
-                searchLoading.style.display = 'none';
-                searchResults.style.display = 'none';
-                showAlert('error', 'Search failed. Please make sure the RAG API is running on port 8000.');
-            }
-        }
-        
-        function displaySearchResults(response) {
-            const container = document.getElementById('search-results-content');
-            
-            if (!response || !response.answer) {
-                container.innerHTML = '<p>No results found.</p>';
-                return;
-            }
-            
-            const confidenceClass = response.confidence >= 0.7 ? 'high' : 
-                                  response.confidence >= 0.4 ? 'medium' : 'low';
-            
-            const sourcesHtml = response.sources && response.sources.length > 0 ? 
-                response.sources.map(source => `
-                    <div class="source">
-                        <a href="${source.url || '#'}" target="_blank">${source.title || 'Untitled'}</a>
-                        <p>${source.content ? source.content.substring(0, 200) + '...' : 'No preview available'}</p>
-                        <div class="metadata">
-                            <span><strong>Site:</strong> ${source.site_name || 'Unknown'}</span>
-                            <span><strong>Category:</strong> ${source.category || 'General'}</span>
+                container.innerHTML = `
+                    <div class="column is-full">
+                        <div class="notification is-info">
+                            <p>No sites configured yet. Add your first site to get started!</p>
                         </div>
                     </div>
-                `).join('') : '<p>No sources available</p>';
-            
-            container.innerHTML = `
-                <div class="search-result">
-                    <h4>Answer</h4>
-                    <div class="answer">${response.answer}</div>
-                    
-                    <div class="metadata">
-                        <span class="confidence ${confidenceClass}">Confidence: ${Math.round(response.confidence * 100)}%</span>
-                        <span><strong>Processing Time:</strong> ${response.processing_time?.toFixed(2)}s</span>
-                        <span><strong>Cached:</strong> ${response.cached ? 'Yes' : 'No'}</span>
-                        ${response.fallback ? '<span style="color: #e74c3c;"><strong>Fallback Used</strong></span>' : ''}
+                `;
+                return;
+            }
+
+            sites.forEach(site => {
+                const statusClass = getStatusClass(site.last_crawl_status);
+                const lastCrawled = site.last_crawled ? new Date(site.last_crawled).toLocaleString() : 'Never';
+                
+                const siteCard = `
+                    <div class="column is-one-third">
+                        <div class="card site-card">
+                            <div class="card-content">
+                                <div class="media">
+                                    <div class="media-left">
+                                        <figure class="image is-48x48">
+                                            <i class="fas fa-globe fa-2x has-text-primary"></i>
+                                        </figure>
+                                    </div>
+                                    <div class="media-content">
+                                        <p class="title is-5">${site.name}</p>
+                                        <p class="subtitle is-6 has-text-grey">${site.base_url}</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="content">
+                                    <p>${site.description || 'No description'}</p>
+                                    
+                                    <div class="tags has-addons">
+                                        <span class="tag">Status</span>
+                                        <span class="tag crawl-status ${statusClass}">${site.last_crawl_status || 'never'}</span>
+                                    </div>
+                                    
+                                    <div class="columns is-mobile is-multiline">
+                                        <div class="column is-half">
+                                            <span class="has-text-weight-bold">${site.total_articles || 0}</span>
+                                            <span class="is-size-7 has-text-grey">Articles</span>
+                                        </div>
+                                        <div class="column is-half">
+                                            <span class="has-text-weight-bold">${site.total_chunks || 0}</span>
+                                            <span class="is-size-7 has-text-grey">Chunks</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <p class="is-size-7 has-text-grey">
+                                        Last crawled: ${lastCrawled}
+                                    </p>
+                                </div>
+                            </div>
+                            <footer class="card-footer">
+                                <a class="card-footer-item" onclick="crawlSite('${site.id}')">
+                                    <span class="icon">
+                                        <i class="fas fa-play"></i>
+                                    </span>
+                                    <span>Crawl</span>
+                                </a>
+                                <a class="card-footer-item" onclick="editSite('${site.id}')">
+                                    <span class="icon">
+                                        <i class="fas fa-edit"></i>
+                                    </span>
+                                    <span>Edit</span>
+                                </a>
+                                <a class="card-footer-item has-text-danger" onclick="deleteSite('${site.id}')">
+                                    <span class="icon">
+                                        <i class="fas fa-trash"></i>
+                                    </span>
+                                    <span>Delete</span>
+                                </a>
+                            </footer>
+                        </div>
                     </div>
-                    
-                    <div class="sources">
-                        <h5>Sources:</h5>
-                        ${sourcesHtml}
-                    </div>
-                    
-                    ${response.suggested_categories && response.suggested_categories.length > 0 ? 
-                        `<div class="suggested-categories">
-                            <h5>Suggested Categories:</h5>
-                            <p>${response.suggested_categories.join(', ')}</p>
-                        </div>` : ''}
-                </div>
-            `;
+                `;
+                container.innerHTML += siteCard;
+            });
         }
 
-        // Actions
-        async function handleAddSite(e) {
-            e.preventDefault();
+        function getStatusClass(status) {
+            switch (status) {
+                case 'completed': return 'completed';
+                case 'failed': return 'failed';
+                case 'running': return 'running';
+                case 'no_content_found': return 'no_content_found';
+                default: return '';
+            }
+        }
+
+        async function handleAddSite() {
+            const form = document.getElementById('add-site-form');
+            const formData = new FormData(form);
             
-            const formData = new FormData(e.target);
             const data = {
                 name: formData.get('name'),
                 description: formData.get('description'),
@@ -1337,62 +778,74 @@
                 blocked_patterns: formData.get('blocked_patterns') ? 
                     formData.get('blocked_patterns').split('\n').filter(p => p.trim()) : []
             };
-            
+
             try {
-                await apiCall('/sites', {
+                showLoading('Adding site...');
+                const response = await fetch(`${API_BASE}/sites`, {
                     method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
                     body: JSON.stringify(data)
                 });
-                
-                showAlert('success', 'Site added successfully!');
-                e.target.reset();
-                loadSites();
+
+                if (response.ok) {
+                    showNotification('Site added successfully!', 'success');
+                    closeModal('add-site-modal');
+                    loadSites();
+                } else {
+                    const error = await response.text();
+                    showNotification(`Error adding site: ${error}`, 'error');
+                }
             } catch (error) {
-                console.error('Failed to add site:', error);
+                console.error('Error adding site:', error);
+                showNotification('Error adding site', 'error');
+            } finally {
+                hideLoading();
             }
         }
 
         async function editSite(siteId) {
-            const site = sites.find(s => s.id === siteId);
-            if (!site) return;
-            
-            // Populate basic form fields
-            document.getElementById('edit-site-id').value = site.id;
-            document.getElementById('edit-site-name').value = site.name;
-            document.getElementById('edit-site-url').value = site.base_url;
-            document.getElementById('edit-site-description').value = site.description;
-            document.getElementById('edit-start-urls').value = site.start_urls.join('\n');
-            document.getElementById('edit-max-articles').value = site.max_articles || 100;
-            document.getElementById('edit-max-depth').value = site.max_depth || 3;
-            document.getElementById('edit-is-active').checked = site.is_active;
-            
-            // Populate strategy and content type
-            document.getElementById('edit-crawl-strategy').value = site.crawl_strategy || 'breadth_first';
-            document.getElementById('edit-content-type').value = site.content_type || 'general';
-            
-            // Populate limits
-            document.getElementById('edit-delay-seconds').value = site.delay_seconds || 1.0;
-            document.getElementById('edit-timeout-seconds').value = site.timeout_seconds || 30;
-            document.getElementById('edit-respect-robots').checked = site.respect_robots_txt !== false;
-            document.getElementById('edit-follow-redirects').checked = site.follow_redirects !== false;
-            
-            // Populate patterns
-            document.getElementById('edit-allowed-patterns').value = (site.allowed_patterns || []).join('\n');
-            document.getElementById('edit-blocked-patterns').value = (site.blocked_patterns || []).join('\n');
-            
-            // Populate selectors
-            document.getElementById('edit-title-selector').value = site.title_selector || '';
-            document.getElementById('edit-content-selector').value = site.content_selector || '';
-            
-            // Show modal
-            document.getElementById('edit-modal').style.display = 'block';
+            try {
+                showLoading('Loading site configuration...');
+                const response = await fetch(`${API_BASE}/sites/${siteId}`);
+                const site = await response.json();
+                
+                currentEditingSiteId = siteId;
+                
+                // Populate form
+                const form = document.getElementById('edit-site-form');
+                form.name.value = site.name;
+                form.description.value = site.description || '';
+                form.base_url.value = site.base_url;
+                form.start_urls.value = site.start_urls.join('\n');
+                form.crawl_strategy.value = site.crawl_strategy;
+                form.content_type.value = site.content_type;
+                form.max_articles.value = site.limits.max_articles;
+                form.max_depth.value = site.limits.max_depth;
+                form.delay_seconds.value = site.limits.delay_seconds;
+                form.timeout_seconds.value = site.limits.timeout_seconds;
+                form.respect_robots_txt.checked = site.limits.respect_robots_txt;
+                form.follow_redirects.checked = site.limits.follow_redirects;
+                form.title_selector.value = site.selectors.title || '';
+                form.content_selector.value = site.selectors.content || '';
+                form.allowed_patterns.value = site.allowed_patterns.join('\n');
+                form.blocked_patterns.value = site.blocked_patterns.join('\n');
+                
+                showModal('edit-site-modal');
+            } catch (error) {
+                console.error('Error loading site:', error);
+                showNotification('Error loading site configuration', 'error');
+            } finally {
+                hideLoading();
+            }
         }
 
-        async function handleEditSite(e) {
-            e.preventDefault();
+        async function handleEditSite() {
+            if (!currentEditingSiteId) return;
             
-            const siteId = document.getElementById('edit-site-id').value;
-            const formData = new FormData(e.target);
+            const form = document.getElementById('edit-site-form');
+            const formData = new FormData(form);
             
             const data = {
                 name: formData.get('name'),
@@ -1416,89 +869,338 @@
                 allowed_patterns: formData.get('allowed_patterns') ? 
                     formData.get('allowed_patterns').split('\n').filter(p => p.trim()) : [],
                 blocked_patterns: formData.get('blocked_patterns') ? 
-                    formData.get('blocked_patterns').split('\n').filter(p => p.trim()) : [],
-                is_active: formData.get('is_active') === 'on'
+                    formData.get('blocked_patterns').split('\n').filter(p => p.trim()) : []
             };
-            
+
             try {
-                await apiCall(`/sites/${siteId}`, {
+                showLoading('Updating site...');
+                const response = await fetch(`${API_BASE}/sites/${currentEditingSiteId}`, {
                     method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
                     body: JSON.stringify(data)
                 });
-                
-                showAlert('success', 'Site updated successfully!');
-                document.getElementById('edit-modal').style.display = 'none';
-                loadSites();
+
+                if (response.ok) {
+                    showNotification('Site updated successfully!', 'success');
+                    closeModal('edit-site-modal');
+                    loadSites();
+                } else {
+                    const error = await response.text();
+                    showNotification(`Error updating site: ${error}`, 'error');
+                }
             } catch (error) {
-                console.error('Failed to update site:', error);
+                console.error('Error updating site:', error);
+                showNotification('Error updating site', 'error');
+            } finally {
+                hideLoading();
             }
         }
 
         async function deleteSite(siteId) {
-            if (!confirm('Are you sure you want to delete this site?')) return;
-            
+            if (!confirm('Are you sure you want to delete this site? This action cannot be undone.')) {
+                return;
+            }
+
             try {
-                await apiCall(`/sites/${siteId}`, {
+                showLoading('Deleting site...');
+                const response = await fetch(`${API_BASE}/sites/${siteId}`, {
                     method: 'DELETE'
                 });
-                
-                showAlert('success', 'Site deleted successfully!');
-                loadSites();
+
+                if (response.ok) {
+                    showNotification('Site deleted successfully!', 'success');
+                    loadSites();
+                } else {
+                    showNotification('Error deleting site', 'error');
+                }
             } catch (error) {
-                console.error('Failed to delete site:', error);
+                console.error('Error deleting site:', error);
+                showNotification('Error deleting site', 'error');
+            } finally {
+                hideLoading();
             }
         }
 
         async function crawlSite(siteId) {
             try {
-                const response = await apiCall('/crawl/start', {
+                showLoading('Starting crawl...');
+                const response = await fetch(`${API_BASE}/crawl`, {
                     method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
                     body: JSON.stringify({
-                        site_ids: [siteId]
+                        site_ids: [siteId],
+                        force_recrawl: true
                     })
                 });
+
+                const result = await response.json();
                 
-                showAlert('success', `Crawl started! Job ID: ${response.job_id}`);
-                loadCrawlJobs();
+                if (response.ok) {
+                    showNotification(`Crawl started: ${result.job_id}`, 'success');
+                    showTab('jobs'); // Switch to jobs tab to see progress
+                } else {
+                    showNotification(`Error starting crawl: ${result.detail}`, 'error');
+                }
             } catch (error) {
-                console.error('Failed to start crawl:', error);
+                console.error('Error starting crawl:', error);
+                showNotification('Error starting crawl', 'error');
+            } finally {
+                hideLoading();
             }
         }
 
-        async function startCrawlAll() {
-            const activeSites = sites.filter(s => s.is_active);
-            if (activeSites.length === 0) {
-                showAlert('error', 'No active sites to crawl!');
+        async function crawlAllSites() {
+            try {
+                showLoading('Starting crawl for all sites...');
+                const response = await fetch(`${API_BASE}/crawl/all`, {
+                    method: 'POST'
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showNotification(`Crawl started: ${result.job_id}`, 'success');
+                    loadCrawlJobs(); // Refresh jobs list
+                } else {
+                    showNotification(`Error starting crawl: ${result.detail}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error starting crawl:', error);
+                showNotification('Error starting crawl', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function loadCrawlJobs() {
+            try {
+                const response = await fetch(`${API_BASE}/crawl/jobs`);
+                const jobs = await response.json();
+                displayCrawlJobs(jobs);
+            } catch (error) {
+                console.error('Error loading crawl jobs:', error);
+                showNotification('Error loading crawl jobs', 'error');
+            }
+        }
+
+        function displayCrawlJobs(jobs) {
+            const container = document.getElementById('crawl-jobs-container');
+            
+            if (jobs.length === 0) {
+                container.innerHTML = `
+                    <div class="notification is-info">
+                        <p>No crawl jobs found. Start a crawl to see job history.</p>
+                    </div>
+                `;
                 return;
             }
-            
+
+            container.innerHTML = '';
+            jobs.forEach(job => {
+                const jobCard = `
+                    <div class="card mb-4">
+                        <div class="card-content">
+                            <div class="level">
+                                <div class="level-left">
+                                    <div class="level-item">
+                                        <div>
+                                            <p class="title is-6">${job.job_id}</p>
+                                            <p class="subtitle is-7">${new Date(job.created_at).toLocaleString()}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="level-right">
+                                    <div class="level-item">
+                                        <span class="tag crawl-status ${getStatusClass(job.status)}">${job.status}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="content">
+                                Sites: ${job.site_ids.length} | 
+                                Progress: ${job.sites_completed}/${job.total_sites}
+                            </p>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += jobCard;
+            });
+        }
+
+        async function loadStatistics() {
             try {
-                const response = await apiCall('/crawl/start', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        site_ids: activeSites.map(s => s.id)
-                    })
-                });
-                
-                showAlert('success', `Crawl started for ${activeSites.length} sites! Job ID: ${response.job_id}`);
-                loadCrawlJobs();
+                showLoading('Loading statistics...');
+                const response = await fetch(`${API_BASE}/stats`);
+                const stats = await response.json();
+                displayStatistics(stats);
             } catch (error) {
-                console.error('Failed to start crawl:', error);
+                console.error('Error loading statistics:', error);
+                showNotification('Error loading statistics', 'error');
+            } finally {
+                hideLoading();
             }
         }
 
-        // Utility functions
-        function showAlert(type, message) {
-            const alertDiv = document.createElement('div');
-            alertDiv.className = `alert alert-${type}`;
-            alertDiv.textContent = message;
+        function displayStatistics(stats) {
+            const container = document.getElementById('stats-container');
+            container.innerHTML = `
+                <div class="column is-one-quarter">
+                    <div class="card">
+                        <div class="card-content has-text-centered">
+                            <p class="title is-4 has-text-primary">${stats.total_sites}</p>
+                            <p class="subtitle is-6">Total Sites</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="column is-one-quarter">
+                    <div class="card">
+                        <div class="card-content has-text-centered">
+                            <p class="title is-4 has-text-success">${stats.total_articles}</p>
+                            <p class="subtitle is-6">Total Articles</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="column is-one-quarter">
+                    <div class="card">
+                        <div class="card-content has-text-centered">
+                            <p class="title is-4 has-text-info">${stats.total_chunks}</p>
+                            <p class="subtitle is-6">Total Chunks</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="column is-one-quarter">
+                    <div class="card">
+                        <div class="card-content has-text-centered">
+                            <p class="title is-4 has-text-warning">${stats.active_sites}</p>
+                            <p class="subtitle is-6">Active Sites</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function performSearch() {
+            const query = document.getElementById('search-query').value.trim();
+            if (!query) {
+                showNotification('Please enter a search query', 'warning');
+                return;
+            }
+
+            try {
+                showLoading('Searching...');
+                const response = await fetch(`${API_BASE}/search`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query, limit: 10 })
+                });
+
+                const results = await response.json();
+                displaySearchResults(results);
+            } catch (error) {
+                console.error('Error performing search:', error);
+                showNotification('Error performing search', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function displaySearchResults(results) {
+            const container = document.getElementById('search-results');
             
-            document.body.insertBefore(alertDiv, document.body.firstChild);
+            if (results.length === 0) {
+                container.innerHTML = `
+                    <div class="notification is-info">
+                        <p>No results found for your query.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = '<h3 class="title is-5 mb-4">Search Results</h3>';
             
+            results.forEach((result, index) => {
+                const resultCard = `
+                    <div class="card mb-4">
+                        <div class="card-content">
+                            <h4 class="title is-6">
+                                <a href="${result.url}" target="_blank">${result.title}</a>
+                            </h4>
+                            <p class="content">${result.content.substring(0, 300)}...</p>
+                            <div class="tags">
+                                <span class="tag is-light">Score: ${(result.score * 100).toFixed(1)}%</span>
+                                <span class="tag is-light">${result.site_name}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += resultCard;
+            });
+        }
+
+        // Search on Enter key
+        document.getElementById('search-query').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+
+        function showNotification(message, type = 'info') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `notification is-${type} is-light`;
+            notification.innerHTML = `
+                <button class="delete"></button>
+                ${message}
+            `;
+            
+            // Position it at the top right
+            notification.style.position = 'fixed';
+            notification.style.top = '20px';
+            notification.style.right = '20px';
+            notification.style.zIndex = '9999';
+            notification.style.minWidth = '300px';
+            
+            document.body.appendChild(notification);
+            
+            // Add delete functionality
+            notification.querySelector('.delete').addEventListener('click', () => {
+                notification.remove();
+            });
+            
+            // Auto remove after 5 seconds
             setTimeout(() => {
-                alertDiv.remove();
+                if (notification.parentNode) {
+                    notification.remove();
+                }
             }, 5000);
         }
+
+        function toggleTheme() {
+            // Bulma doesn't have built-in dark mode, but we can toggle a class
+            document.documentElement.classList.toggle('has-dark-theme');
+            
+            const button = document.querySelector('.theme-toggle');
+            const icon = button.querySelector('i');
+            const text = button.querySelector('span:last-child');
+            
+            if (document.documentElement.classList.contains('has-dark-theme')) {
+                icon.className = 'fas fa-sun';
+                text.textContent = 'Light Mode';
+            } else {
+                icon.className = 'fas fa-moon';
+                text.textContent = 'Dark Mode';
+            }
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            showTab('sites'); // Show sites tab by default
+        });
     </script>
 </body>
-</html> 
+</html>
