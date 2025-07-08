@@ -161,6 +161,40 @@ class CrawlJobManager:
         self.active_jobs: Dict[str, asyncio.Task] = {}
         self.active_crawlers: Dict[str, Dict[str, Any]] = {}  # job_id -> {site_id: crawler}
         self.progress_manager = CrawlProgressManager()
+        
+        # Load existing jobs from disk on startup
+        self._load_existing_jobs()
+    
+    def _load_existing_jobs(self):
+        """Load existing jobs from progress files on startup"""
+        try:
+            # Get all recoverable jobs from progress manager
+            recoverable_jobs = self.progress_manager.get_recoverable_jobs()
+            
+            for job_id in recoverable_jobs:
+                progress = self.progress_manager.get_job_progress(job_id)
+                if progress:
+                    # Reconstruct basic job information
+                    site_ids = list(progress.site_progresses.keys())
+                    
+                    # Create job entry with progress info
+                    self.jobs[job_id] = {
+                        'status': progress.status.value.lower(),
+                        'site_ids': site_ids,
+                        'started_at': progress.start_time.isoformat(),
+                        'site_results': {},
+                        'errors': [],
+                        'progress': progress,
+                        'total_articles': progress.total_articles
+                    }
+                    
+                    # Set completion info if available
+                    if progress.completion_time:
+                        self.jobs[job_id]['completed_at'] = progress.completion_time.isoformat()
+                    
+                    logger.info(f"Loaded existing job {job_id} with status {progress.status.value}")
+        except Exception as e:
+            logger.warning(f"Error loading existing jobs: {str(e)}")
     
     def create_job(self, site_ids: List[str], site_configs: Dict[str, Any]) -> str:
         job_id = f"crawl_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{len(self.jobs)}"
@@ -263,6 +297,33 @@ class CrawlJobManager:
     def get_recoverable_jobs(self) -> List[str]:
         """Get jobs that can be recovered from interruption"""
         return self.progress_manager.get_recoverable_jobs()
+    
+    def ensure_job_loaded(self, job_id: str) -> bool:
+        """Ensure job is loaded in memory, loading from disk if needed"""
+        if job_id in self.jobs:
+            return True
+        
+        # Try to load from progress manager
+        progress = self.progress_manager.get_job_progress(job_id)
+        if not progress:
+            return False
+        
+        # Reconstruct job info from progress
+        site_ids = list(progress.site_progresses.keys())
+        self.jobs[job_id] = {
+            'status': progress.status.value.lower(),
+            'site_ids': site_ids,
+            'started_at': progress.start_time.isoformat(),
+            'site_results': {},
+            'errors': [],
+            'progress': progress,
+            'total_articles': progress.total_articles
+        }
+        if progress.completion_time:
+            self.jobs[job_id]['completed_at'] = progress.completion_time.isoformat()
+        
+        logger.info(f"Loaded job {job_id} from progress file")
+        return True
 
 # Global instances
 job_manager = CrawlJobManager()
@@ -734,21 +795,46 @@ def create_site_management_api() -> FastAPI:
     @app.post("/crawl/{job_id}/pause")
     async def pause_crawl(job_id: str):
         """Pause a running crawl job"""
+        # Ensure job is loaded in memory
+        if not job_manager.ensure_job_loaded(job_id):
+            raise HTTPException(status_code=404, detail=f"Crawl job {job_id} not found")
+        
+        # Try to pause the job
         success = job_manager.progress_manager.pause_job(job_id)
         if not success:
-            raise HTTPException(status_code=404, detail="Crawl job not found or cannot be paused")
+            # Get current job status for better error message
+            progress = job_manager.progress_manager.get_job_progress(job_id)
+            current_status = progress.status.value if progress else "unknown"
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Cannot pause job {job_id} - current status: {current_status}. Only running jobs can be paused."
+            )
         
         # Signal any active crawlers to pause
         job_manager.pause_job_crawlers(job_id)
+        
+        # Update job status in job manager
+        job_manager.update_job(job_id, {'status': 'paused'})
         
         return {"message": f"Crawl job {job_id} paused successfully", "status": "paused"}
 
     @app.post("/crawl/{job_id}/stop")
     async def stop_crawl(job_id: str):
         """Stop (cancel) a crawl job"""
+        # Ensure job is loaded in memory
+        if not job_manager.ensure_job_loaded(job_id):
+            raise HTTPException(status_code=404, detail=f"Crawl job {job_id} not found")
+        
+        # Try to stop the job
         success = job_manager.progress_manager.stop_job(job_id)
         if not success:
-            raise HTTPException(status_code=404, detail="Crawl job not found or cannot be stopped")
+            # Get current job status for better error message
+            progress = job_manager.progress_manager.get_job_progress(job_id)
+            current_status = progress.status.value if progress else "unknown"
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Cannot stop job {job_id} - current status: {current_status}. Job may already be finished."
+            )
         
         # Signal any active crawlers to stop
         job_manager.stop_job_crawlers(job_id)
@@ -760,6 +846,9 @@ def create_site_management_api() -> FastAPI:
                 task.cancel()
             del job_manager.active_jobs[job_id]
         
+        # Update job status in job manager
+        job_manager.update_job(job_id, {'status': 'cancelled'})
+        
         return {"message": f"Crawl job {job_id} stopped successfully", "status": "cancelled"}
 
     @app.post("/crawl/{job_id}/resume")
@@ -768,12 +857,19 @@ def create_site_management_api() -> FastAPI:
         background_tasks: BackgroundTasks
     ):
         """Resume a paused crawl job"""
+        # Ensure job is loaded in memory
+        if not job_manager.ensure_job_loaded(job_id):
+            raise HTTPException(status_code=404, detail=f"Crawl job {job_id} not found")
+        
         progress = job_manager.get_job_progress(job_id)
         if not progress:
-            raise HTTPException(status_code=404, detail="Crawl job not found")
+            raise HTTPException(status_code=404, detail=f"Crawl job {job_id} not found")
         
         if progress.status != CrawlJobStatus.PAUSED:
-            raise HTTPException(status_code=400, detail="Job is not paused")
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Job is not paused - current status: {progress.status.value}. Only paused jobs can be resumed."
+            )
         
         # Get resumable sites
         resumable_sites = job_manager.progress_manager.get_resumable_sites(job_id)
@@ -784,6 +880,9 @@ def create_site_management_api() -> FastAPI:
         success = job_manager.progress_manager.resume_job(job_id)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to resume job")
+        
+        # Update job status in job manager
+        job_manager.update_job(job_id, {'status': 'running'})
         
         # Start background task to continue crawling
         background_tasks.add_task(
