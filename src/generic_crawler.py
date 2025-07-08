@@ -798,9 +798,12 @@ class GenericWebCrawler:
             
             os.makedirs(os.path.dirname(filename), exist_ok=True)
             
+            # Sort articles alphabetically by URL for improved readability
+            sorted_articles = sorted(self.articles, key=lambda x: x.get('url', ''))
+            
             data = {
                 'site_config': self.config.to_dict(),
-                'articles': self.articles,
+                'articles': sorted_articles,
                 'statistics': {
                     'total_articles': len(self.articles),
                     'crawled_urls': len(self.crawled_urls),
