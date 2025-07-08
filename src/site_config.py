@@ -51,20 +51,20 @@ class SiteSelectors:
 @dataclass
 class CrawlLimits:
     """Limits and constraints for crawling operations"""
-    max_articles: int = 100
-    max_depth: int = 3
-    delay_seconds: float = 1.0
+    max_articles: int = 10000
+    max_depth: int = 4
+    delay_seconds: float = 0.5
     timeout_seconds: int = 30
-    max_file_size_mb: int = 10
+    max_file_size_mb: int = 1000
     respect_robots_txt: bool = True
     follow_redirects: bool = True
     
     # Parallelization settings
-    max_concurrent_requests: int = 5
+    max_concurrent_requests: int = 6
     max_concurrent_sites: int = 3
     enable_parallel_processing: bool = True
     batch_size: int = 10
-    thread_pool_size: int = 4
+    thread_pool_size: int = 6
 
 
 @dataclass
@@ -331,11 +331,11 @@ def create_site_from_template(template_name: str,
             "content_type": ContentType.DOCUMENTATION,
             "crawl_strategy": CrawlStrategy.BREADTH_FIRST,
             "limits": CrawlLimits(
-                max_articles=500,
+                max_articles=10000,
                 max_depth=4,
                 delay_seconds=1.0,
                 respect_robots_txt=True,
-                max_concurrent_requests=5,
+                max_concurrent_requests=6,
                 max_concurrent_sites=2,
                 enable_parallel_processing=True,
                 batch_size=15,

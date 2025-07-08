@@ -373,8 +373,8 @@ job_status = await api_call(f'/crawl/{job_id}/status')
 # Configure respectful crawling
 "limits": {
     "delay_seconds": 1.0,        # Minimum delay between requests
-    "max_articles": 1000,        # Limit to prevent overload
-    "respect_robots_txt": true   # Always respect robots.txt
+    "max_articles": 10000,        # Limit to prevent overload
+    "respect_robots_txt": false   # Always respect robots.txt
 }
 ```
 
