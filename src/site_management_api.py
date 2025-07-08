@@ -46,6 +46,29 @@ class CrawlLimitsRequest(BaseModel):
     batch_size: int = Field(10, ge=1, le=100)
     thread_pool_size: int = Field(4, ge=1, le=16)
 
+class AuthConfigRequest(BaseModel):
+    requires_sso: bool = False
+    user_data_dir: Optional[str] = None
+    login_url: Optional[str] = None
+    auth_test_url: Optional[str] = None
+    session_timeout_hours: int = Field(24, ge=1, le=168)  # 1 hour to 1 week
+    auth_type: str = Field("sso", pattern=r'^(sso|basic|oauth)$')
+
+class AuthConfigResponse(BaseModel):
+    requires_sso: bool
+    user_data_dir: Optional[str]
+    login_url: Optional[str]
+    auth_test_url: Optional[str]
+    session_timeout_hours: int
+    auth_type: str
+
+class AuthStatusResponse(BaseModel):
+    is_authenticated: bool
+    last_check: Optional[str] = None
+    session_expires: Optional[str] = None
+    error_message: Optional[str] = None
+    profile_path: Optional[str] = None
+
 class SiteConfigRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     description: str = Field("", max_length=1000)
@@ -81,28 +104,6 @@ class SiteConfigRequest(BaseModel):
             raise ValueError("Chunk overlap must be less than chunk size")
         return v
 
-class AuthConfigRequest(BaseModel):
-    requires_sso: bool = False
-    user_data_dir: Optional[str] = None
-    login_url: Optional[str] = None
-    auth_test_url: Optional[str] = None
-    session_timeout_hours: int = Field(24, ge=1, le=168)  # 1 hour to 1 week
-    auth_type: str = Field("sso", pattern=r'^(sso|basic|oauth)$')
-
-class AuthConfigResponse(BaseModel):
-    requires_sso: bool
-    user_data_dir: Optional[str]
-    login_url: Optional[str]
-    auth_test_url: Optional[str]
-    session_timeout_hours: int
-    auth_type: str
-
-class AuthStatusResponse(BaseModel):
-    is_authenticated: bool
-    last_check: Optional[str] = None
-    session_expires: Optional[str] = None
-    error_message: Optional[str] = None
-    profile_path: Optional[str] = None
 
 class CrawlLimitsResponse(BaseModel):
     max_articles: int
