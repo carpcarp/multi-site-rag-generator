@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Multi-Site RAG Manager</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* Custom component styling */
@@ -69,6 +69,13 @@
         /* Smooth transitions for theme changes */
         * {
             transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+
+        /* Ensure dark mode works with system preferences */
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme]) {
+                /* Let Bulma handle dark mode automatically when no explicit theme is set */
+            }
         }
     </style>
 </head>
@@ -1232,25 +1239,24 @@
             }
         }
 
-        // Initialize theme on page load using Bulma's approach
+        // Initialize theme on page load using Bulma v1's approach
         function initializeTheme() {
             const savedTheme = localStorage.getItem('theme');
             
-            // Check system preference if no saved theme
-            let theme = savedTheme;
-            if (!theme) {
-                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                theme = prefersDark ? 'dark' : 'light';
-            }
-            
-            // Apply theme using Bulma's data-theme attribute
-            if (theme === 'dark') {
-                document.documentElement.setAttribute('data-theme', 'dark');
+            if (savedTheme) {
+                // User has explicitly chosen a theme
+                if (savedTheme === 'dark') {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                } else {
+                    document.documentElement.removeAttribute('data-theme');
+                }
+                updateThemeButton(savedTheme);
             } else {
-                document.documentElement.removeAttribute('data-theme');
+                // No saved preference, let Bulma v1 handle system preference automatically
+                // But still update the button based on system preference
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                updateThemeButton(prefersDark ? 'dark' : 'light');
             }
-            
-            updateThemeButton(theme);
         }
 
         // Listen for system theme changes
