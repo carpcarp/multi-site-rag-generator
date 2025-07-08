@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Site RAG Manager</title>
+    <style>
+        :root {
+            /* Light theme colors */
+            --bg-primary: #f5f5f5;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f8f9fa;
+            --text-primary: #333333;
+            --text-secondary: #7f8c8d;
+            --text-tertiary: #555555;
+            --accent-primary: #3498db;
+            --accent-secondary: #2980b9;
+            --accent-tertiary: #2c3e50;
+            --success: #27ae60;
+            --success-bg: #d4edda;
+            --success-text: #155724;
+            --warning: #f39c12;
+            --warning-bg: #fff3cd;
+            --warning-text: #856404;
+            --danger: #e74c3c;
+            --danger-bg: #f8d7da;
+            --danger-text: #721c24;
+            --border-color: #ddd;
+            --shadow: rgba(0,0,0,0.1);
+            --shadow-light: rgba(0,0,0,0.05);
+        }
+
+        [data-theme="dark"] {
+            /* Dark theme colors */
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --bg-tertiary: #333333;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0b0b0;
+            --text-tertiary: #cccccc;
+            --accent-primary: #4a9eff;
+            --accent-secondary: #357abd;
+            --accent-tertiary: #4a6fa5;
+            --success: #2ecc71;
+            --success-bg: #1e4d2b;
+            --success-text: #a3e6b4;
+            --warning: #f1c40f;
+            --warning-bg: #4d3c0f;
+            --warning-text: #f7dc6f;
+            --danger: #e74c3c;
+            --danger-bg: #4d1f1f;
+            --danger-text: #f1948a;
+            --border-color: #444;
+            --shadow: rgba(0,0,0,0.3);
+            --shadow-light: rgba(0,0,0,0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px var(--shadow);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-content h1 {
+            color: var(--accent-tertiary);
+            margin-bottom: 10px;
+        }
+
+        .header-content p {
+            color: var(--text-secondary);
+        }
+
+        .theme-toggle {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 25px;
+            padding: 8px 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .theme-toggle:hover {
+            background: var(--accent-primary);
+            color: white;
+            border-color: var(--accent-primary);
+        }
+
+        .theme-toggle-icon {
+            font-size: 16px;
+        }
+
+        .nav {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .nav button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background: var(--accent-primary);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .nav button:hover {
+            background: var(--accent-secondary);
+        }
+
+        .nav button.active {
+            background: var(--accent-tertiary);
+        }
+
+        .tab-content {
+            display: none;
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px var(--shadow);
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .sites-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .site-card {
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px var(--shadow);
+            border-left: 4px solid var(--accent-primary);
+        }
+
+        .site-card h3 {
+            color: var(--accent-tertiary);
+            margin-bottom: 10px;
+        }
+
+        .site-card .url {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+
+        .site-card .status {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status.active {
+            background: var(--success-bg);
+            color: var(--success-text);
+        }
+
+        .status.inactive {
+            background: var(--danger-bg);
+            color: var(--danger-text);
+        }
+
+        .site-actions {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .site-actions button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-secondary);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: var(--success);
+            filter: brightness(0.9);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: var(--danger);
+            filter: brightness(0.9);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: var(--accent-tertiary);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            font-size: 16px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+
+        .form-group textarea {
+            height: 100px;
+            resize: vertical;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+        }
+
+        .close {
+            color: var(--text-secondary);
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .close:hover {
+            color: var(--text-primary);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--accent-primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+
+        .alert-success {
+            background: var(--success-bg);
+            color: var(--success-text);
+            border: 1px solid var(--success);
+        }
+
+        .alert-error {
+            background: var(--danger-bg);
+            color: var(--danger-text);
+            border: 1px solid var(--danger);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px var(--shadow);
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            color: var(--accent-primary);
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .crawl-jobs {
+            margin-top: 20px;
+        }
+
+        .job-card {
+            background: var(--bg-secondary);
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px var(--shadow);
+            border-left: 4px solid var(--warning);
+        }
+
+        .job-card.completed {
+            border-left-color: var(--success);
+        }
+
+        .job-card.failed {
+            border-left-color: var(--danger);
+        }
+
+        .template-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .template-card {
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px var(--shadow);
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid var(--border-color);
+        }
+
+        .template-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px var(--shadow);
+            border-color: var(--accent-primary);
+        }
+
+        .template-card h4 {
+            color: var(--accent-tertiary);
+            margin-bottom: 10px;
+        }
+
+        .template-card p {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+
+        .search-container {
+            margin-bottom: 30px;
+        }
+
+        .search-results {
+            margin-top: 30px;
+        }
+
+        .search-result {
+            background: var(--bg-secondary);
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px var(--shadow);
+            border-left: 4px solid var(--success);
+        }
+
+        .search-result h4 {
+            color: var(--accent-tertiary);
+            margin-bottom: 10px;
+        }
+
+        .search-result .answer {
+            background: var(--bg-tertiary);
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            border-left: 3px solid var(--accent-primary);
+        }
+
+        .search-result .sources {
+            margin-top: 15px;
+        }
+
+        .search-result .source {
+            background: var(--success-bg);
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border-left: 3px solid var(--success);
+        }
+
+        .search-result .source a {
+            color: var(--accent-tertiary);
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .search-result .source a:hover {
+            text-decoration: underline;
+            color: var(--accent-primary);
+        }
+
+        .search-result .metadata {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: var(--text-secondary);
+        }
+
+        .search-result .confidence {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        .confidence.high {
+            background: var(--success-bg);
+            color: var(--success-text);
+        }
+
+        .confidence.medium {
+            background: var(--warning-bg);
+            color: var(--warning-text);
+        }
+
+        .confidence.low {
+            background: var(--danger-bg);
+            color: var(--danger-text);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .nav {
+                flex-direction: column;
+            }
+            
+            .modal-content {
+                width: 95%;
+                margin: 10% auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <h1>🌐 Multi-Site RAG Manager</h1>
+                <p>Manage and crawl multiple websites for your RAG system</p>
+            </div>
+            <button class="theme-toggle" id="theme-toggle">
+                <span class="theme-toggle-icon" id="theme-icon">🌙</span>
+                <span id="theme-text">Dark</span>
+            </button>
+        </div>
+
+        <div class="nav">
+            <button class="nav-btn active" data-tab="search">Search</button>
+            <button class="nav-btn" data-tab="sites">Sites</button>
+            <button class="nav-btn" data-tab="add-site">Add Site</button>
+            <button class="nav-btn" data-tab="crawl">Crawl Jobs</button>
+            <button class="nav-btn" data-tab="stats">Statistics</button>
+        </div>
+
+        <!-- Search Tab -->
+        <div id="search" class="tab-content active">
+            <h2>Search Knowledge Base</h2>
+            
+            <div class="search-container">
+                <form id="search-form">
+                    <div class="form-group">
+                        <label for="search-query">Search Query</label>
+                        <input type="text" id="search-query" name="query" placeholder="Enter your question or keywords..." required>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="category-filter">Category Filter (optional)</label>
+                            <select id="category-filter" name="category_filter">
+                                <option value="">All Categories</option>
+                                <option value="Contacts">Contacts</option>
+                                <option value="Companies">Companies</option>
+                                <option value="Deals">Deals</option>
+                                <option value="Service Hub">Service Hub</option>
+                                <option value="Reports">Reports</option>
+                                <option value="Automation">Automation</option>
+                                <option value="Integrations">Integrations</option>
+                                <option value="Getting Started">Getting Started</option>
+                                <option value="General">General</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="max-context">Max Context Length</label>
+                            <input type="number" id="max-context" name="max_context_length" value="4000" min="500" max="10000">
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn-primary">Search</button>
+                </form>
+            </div>
+            
+            <div id="search-results" class="search-results" style="display: none;">
+                <h3>Search Results</h3>
+                <div id="search-results-content"></div>
+            </div>
+            
+            <div class="loading" id="search-loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Searching...</p>
+            </div>
+        </div>
+
+        <!-- Sites Tab -->
+        <div id="sites" class="tab-content">
+            <div class="loading" id="sites-loading">
+                <div class="spinner"></div>
+                <p>Loading sites...</p>
+            </div>
+            <div id="sites-container" class="sites-grid"></div>
+        </div>
+
+        <!-- Add Site Tab -->
+        <div id="add-site" class="tab-content">
+            <h2>Add New Site</h2>
+            
+            <div class="template-grid" id="templates">
+                <div class="template-card" data-template="documentation">
+                    <h4>📚 Documentation</h4>
+                    <p>For documentation websites (GitBook, Notion, etc.)</p>
+                </div>
+                <div class="template-card" data-template="blog">
+                    <h4>📝 Blog</h4>
+                    <p>For blog and news websites</p>
+                </div>
+                <div class="template-card" data-template="support">
+                    <h4>🛠️ Support</h4>
+                    <p>For support and FAQ websites</p>
+                </div>
+                <div class="template-card" data-template="custom">
+                    <h4>⚙️ Custom</h4>
+                    <p>Configure everything manually</p>
+                </div>
+            </div>
+
+            <form id="site-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="site-name">Site Name *</label>
+                        <input type="text" id="site-name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="site-url">Base URL *</label>
+                        <input type="url" id="site-url" name="base_url" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="site-description">Description</label>
+                    <textarea id="site-description" name="description"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="start-urls">Start URLs (one per line) *</label>
+                    <textarea id="start-urls" name="start_urls" required></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="crawl-strategy">Crawl Strategy</label>
+                        <select id="crawl-strategy" name="crawl_strategy">
+                            <option value="breadth_first">Breadth First</option>
+                            <option value="depth_first">Depth First</option>
+                            <option value="sitemap">Sitemap</option>
+                            <option value="url_list">URL List</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="content-type">Content Type</label>
+                        <select id="content-type" name="content_type">
+                            <option value="general">General</option>
+                            <option value="documentation">Documentation</option>
+                            <option value="blog">Blog</option>
+                            <option value="news">News</option>
+                            <option value="support">Support</option>
+                            <option value="api">API</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="max-articles">Max Articles</label>
+                        <input type="number" id="max-articles" name="max_articles" value="100" min="1" max="10000">
+                    </div>
+                    <div class="form-group">
+                        <label for="max-depth">Max Depth</label>
+                        <input type="number" id="max-depth" name="max_depth" value="3" min="1" max="10">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary">Add Site</button>
+            </form>
+        </div>
+
+        <!-- Crawl Jobs Tab -->
+        <div id="crawl" class="tab-content">
+            <h2>Crawl Jobs</h2>
+            
+            <div class="form-group">
+                <button id="start-crawl-all" class="btn-success">Start Crawl All Active Sites</button>
+            </div>
+
+            <div class="crawl-jobs" id="crawl-jobs-container">
+                <div class="loading" id="jobs-loading">
+                    <div class="spinner"></div>
+                    <p>Loading crawl jobs...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Tab -->
+        <div id="stats" class="tab-content">
+            <h2>Statistics</h2>
+            
+            <div class="stats-grid" id="stats-container">
+                <div class="loading" id="stats-loading">
+                    <div class="spinner"></div>
+                    <p>Loading statistics...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Site Modal -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Edit Site</h2>
+            <form id="edit-form">
+                <input type="hidden" id="edit-site-id">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-site-name">Site Name *</label>
+                        <input type="text" id="edit-site-name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-site-url">Base URL *</label>
+                        <input type="url" id="edit-site-url" name="base_url" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-site-description">Description</label>
+                    <textarea id="edit-site-description" name="description"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-start-urls">Start URLs (one per line) *</label>
+                    <textarea id="edit-start-urls" name="start_urls" required></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-max-articles">Max Articles</label>
+                        <input type="number" id="edit-max-articles" name="max_articles" min="1" max="10000">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-max-depth">Max Depth</label>
+                        <input type="number" id="edit-max-depth" name="max_depth" min="1" max="10">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="edit-is-active" name="is_active">
+                        Active
+                    </label>
+                </div>
+
+                <button type="submit" class="btn-primary">Update Site</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const SITE_API_BASE = 'http://localhost:8001';  // Site management API
+        const RAG_API_BASE = 'http://localhost:8000';   // RAG query API
+        let sites = [];
+        let crawlJobs = [];
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            setupNavigation();
+            setupModals();
+            setupForms();
+            loadSites();
+            loadCrawlJobs();
+            loadStats();
+            
+            // Refresh data every 30 seconds
+            setInterval(() => {
+                loadSites();
+                loadCrawlJobs();
+                loadStats();
+            }, 30000);
+        });
+
+        // Navigation
+        function setupNavigation() {
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const tab = this.dataset.tab;
+                    switchTab(tab);
+                });
+            });
+        }
+
+        function switchTab(tabName) {
+            // Update nav buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName).classList.add('active');
+        }
+
+        // Modal management
+        function setupModals() {
+            const modal = document.getElementById('edit-modal');
+            const closeBtn = document.querySelector('.close');
+            
+            closeBtn.addEventListener('click', () => {
+                modal.style.display = 'none';
+            });
+            
+            window.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        }
+
+        // Form handling
+        function setupForms() {
+            // Template selection
+            document.querySelectorAll('.template-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    const template = this.dataset.template;
+                    selectTemplate(template);
+                });
+            });
+
+            // Search form
+            document.getElementById('search-form').addEventListener('submit', handleSearch);
+            
+            // Add site form
+            document.getElementById('site-form').addEventListener('submit', handleAddSite);
+            
+            // Edit site form
+            document.getElementById('edit-form').addEventListener('submit', handleEditSite);
+            
+            // Start crawl all button
+            document.getElementById('start-crawl-all').addEventListener('click', startCrawlAll);
+        }
+
+        function selectTemplate(template) {
+            // Remove active class from all templates
+            document.querySelectorAll('.template-card').forEach(card => {
+                card.style.border = 'none';
+            });
+            
+            // Add active class to selected template
+            document.querySelector(`[data-template="${template}"]`).style.border = '2px solid #3498db';
+            
+            // Set form defaults based on template
+            const templates = {
+                documentation: {
+                    content_type: 'documentation',
+                    crawl_strategy: 'breadth_first',
+                    max_articles: 200,
+                    max_depth: 4
+                },
+                blog: {
+                    content_type: 'blog',
+                    crawl_strategy: 'sitemap',
+                    max_articles: 100,
+                    max_depth: 2
+                },
+                support: {
+                    content_type: 'support',
+                    crawl_strategy: 'breadth_first',
+                    max_articles: 150,
+                    max_depth: 3
+                },
+                custom: {
+                    content_type: 'general',
+                    crawl_strategy: 'breadth_first',
+                    max_articles: 100,
+                    max_depth: 3
+                }
+            };
+            
+            const config = templates[template];
+            if (config) {
+                document.getElementById('content-type').value = config.content_type;
+                document.getElementById('crawl-strategy').value = config.crawl_strategy;
+                document.getElementById('max-articles').value = config.max_articles;
+                document.getElementById('max-depth').value = config.max_depth;
+            }
+        }
+
+        // API calls
+        async function apiCall(endpoint, options = {}, apiBase = SITE_API_BASE) {
+            try {
+                const response = await fetch(`${apiBase}${endpoint}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+                }
+                
+                return await response.json();
+            } catch (error) {
+                console.error('API call failed:', error);
+                showAlert('error', `API call failed: ${error.message}`);
+                throw error;
+            }
+        }
+
+        // Load data
+        async function loadSites() {
+            try {
+                const loading = document.getElementById('sites-loading');
+                loading.style.display = 'block';
+                
+                sites = await apiCall('/sites');
+                renderSites();
+                
+                loading.style.display = 'none';
+            } catch (error) {
+                console.error('Failed to load sites:', error);
+                document.getElementById('sites-loading').style.display = 'none';
+            }
+        }
+
+        async function loadCrawlJobs() {
+            try {
+                const loading = document.getElementById('jobs-loading');
+                loading.style.display = 'block';
+                
+                const response = await apiCall('/crawl/jobs');
+                crawlJobs = response.jobs;
+                renderCrawlJobs();
+                
+                loading.style.display = 'none';
+            } catch (error) {
+                console.error('Failed to load crawl jobs:', error);
+                document.getElementById('jobs-loading').style.display = 'none';
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const loading = document.getElementById('stats-loading');
+                loading.style.display = 'block';
+                
+                const health = await apiCall('/health');
+                renderStats(health);
+                
+                loading.style.display = 'none';
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+                document.getElementById('stats-loading').style.display = 'none';
+            }
+        }
+
+        // Render functions
+        function renderSites() {
+            const container = document.getElementById('sites-container');
+            
+            if (sites.length === 0) {
+                container.innerHTML = '<p>No sites configured yet. Add your first site to get started!</p>';
+                return;
+            }
+            
+            container.innerHTML = sites.map(site => `
+                <div class="site-card">
+                    <h3>${site.name}</h3>
+                    <div class="url">${site.base_url}</div>
+                    <div class="status ${site.is_active ? 'active' : 'inactive'}">
+                        ${site.is_active ? 'Active' : 'Inactive'}
+                    </div>
+                    <p><strong>Articles:</strong> ${site.total_articles}</p>
+                    <p><strong>Last Crawl:</strong> ${site.last_crawl_status}</p>
+                    <div class="site-actions">
+                        <button class="btn-primary" onclick="editSite('${site.id}')">Edit</button>
+                        <button class="btn-success" onclick="crawlSite('${site.id}')">Crawl</button>
+                        <button class="btn-danger" onclick="deleteSite('${site.id}')">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderCrawlJobs() {
+            const container = document.getElementById('crawl-jobs-container');
+            
+            if (crawlJobs.length === 0) {
+                container.innerHTML = '<p>No crawl jobs found.</p>';
+                return;
+            }
+            
+            container.innerHTML = crawlJobs.map(job => `
+                <div class="job-card ${job.status}">
+                    <h4>Job ID: ${job.job_id}</h4>
+                    <p><strong>Status:</strong> ${job.status}</p>
+                    <p><strong>Sites:</strong> ${job.site_ids.join(', ')}</p>
+                    <p><strong>Started:</strong> ${new Date(job.started_at).toLocaleString()}</p>
+                    ${job.completed_at ? `<p><strong>Completed:</strong> ${new Date(job.completed_at).toLocaleString()}</p>` : ''}
+                    <p><strong>Articles:</strong> ${job.total_articles || 0}</p>
+                </div>
+            `).join('');
+        }
+
+        function renderStats(health) {
+            const container = document.getElementById('stats-container');
+            
+            container.innerHTML = `
+                <div class="stat-card">
+                    <h3>${health.total_sites}</h3>
+                    <p>Total Sites</p>
+                </div>
+                <div class="stat-card">
+                    <h3>${health.active_sites}</h3>
+                    <p>Active Sites</p>
+                </div>
+                <div class="stat-card">
+                    <h3>${health.active_crawl_jobs}</h3>
+                    <p>Active Crawl Jobs</p>
+                </div>
+                <div class="stat-card">
+                    <h3>${health.status}</h3>
+                    <p>System Status</p>
+                </div>
+            `;
+        }
+
+        // Search functionality
+        async function handleSearch(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const query = formData.get('query');
+            const categoryFilter = formData.get('category_filter');
+            const maxContextLength = parseInt(formData.get('max_context_length'));
+            
+            if (!query || query.trim() === '') {
+                showAlert('error', 'Please enter a search query.');
+                return;
+            }
+            
+            const searchResults = document.getElementById('search-results');
+            const searchLoading = document.getElementById('search-loading');
+            const searchResultsContent = document.getElementById('search-results-content');
+            
+            try {
+                // Show loading
+                searchLoading.style.display = 'block';
+                searchResults.style.display = 'none';
+                
+                // Prepare request data
+                const requestData = {
+                    question: query,
+                    max_context_length: maxContextLength
+                };
+                
+                if (categoryFilter) {
+                    requestData.category_filter = categoryFilter;
+                }
+                
+                // Make API call to RAG system
+                const response = await apiCall('/query', {
+                    method: 'POST',
+                    body: JSON.stringify(requestData)
+                }, RAG_API_BASE);
+                
+                // Hide loading
+                searchLoading.style.display = 'none';
+                
+                // Display results
+                displaySearchResults(response);
+                searchResults.style.display = 'block';
+                
+            } catch (error) {
+                console.error('Search failed:', error);
+                searchLoading.style.display = 'none';
+                searchResults.style.display = 'none';
+                showAlert('error', 'Search failed. Please make sure the RAG API is running on port 8000.');
+            }
+        }
+        
+        function displaySearchResults(response) {
+            const container = document.getElementById('search-results-content');
+            
+            if (!response || !response.answer) {
+                container.innerHTML = '<p>No results found.</p>';
+                return;
+            }
+            
+            const confidenceClass = response.confidence >= 0.7 ? 'high' : 
+                                  response.confidence >= 0.4 ? 'medium' : 'low';
+            
+            const sourcesHtml = response.sources && response.sources.length > 0 ? 
+                response.sources.map(source => `
+                    <div class="source">
+                        <a href="${source.url || '#'}" target="_blank">${source.title || 'Untitled'}</a>
+                        <p>${source.content ? source.content.substring(0, 200) + '...' : 'No preview available'}</p>
+                        <div class="metadata">
+                            <span><strong>Site:</strong> ${source.site_name || 'Unknown'}</span>
+                            <span><strong>Category:</strong> ${source.category || 'General'}</span>
+                        </div>
+                    </div>
+                `).join('') : '<p>No sources available</p>';
+            
+            container.innerHTML = `
+                <div class="search-result">
+                    <h4>Answer</h4>
+                    <div class="answer">${response.answer}</div>
+                    
+                    <div class="metadata">
+                        <span class="confidence ${confidenceClass}">Confidence: ${Math.round(response.confidence * 100)}%</span>
+                        <span><strong>Processing Time:</strong> ${response.processing_time?.toFixed(2)}s</span>
+                        <span><strong>Cached:</strong> ${response.cached ? 'Yes' : 'No'}</span>
+                        ${response.fallback ? '<span style="color: #e74c3c;"><strong>Fallback Used</strong></span>' : ''}
+                    </div>
+                    
+                    <div class="sources">
+                        <h5>Sources:</h5>
+                        ${sourcesHtml}
+                    </div>
+                    
+                    ${response.suggested_categories && response.suggested_categories.length > 0 ? 
+                        `<div class="suggested-categories">
+                            <h5>Suggested Categories:</h5>
+                            <p>${response.suggested_categories.join(', ')}</p>
+                        </div>` : ''}
+                </div>
+            `;
+        }
+
+        // Actions
+        async function handleAddSite(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const data = {
+                name: formData.get('name'),
+                description: formData.get('description'),
+                base_url: formData.get('base_url'),
+                start_urls: formData.get('start_urls').split('\n').filter(url => url.trim()),
+                crawl_strategy: formData.get('crawl_strategy'),
+                content_type: formData.get('content_type'),
+                limits: {
+                    max_articles: parseInt(formData.get('max_articles')),
+                    max_depth: parseInt(formData.get('max_depth'))
+                }
+            };
+            
+            try {
+                await apiCall('/sites', {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                });
+                
+                showAlert('success', 'Site added successfully!');
+                e.target.reset();
+                loadSites();
+            } catch (error) {
+                console.error('Failed to add site:', error);
+            }
+        }
+
+        async function editSite(siteId) {
+            const site = sites.find(s => s.id === siteId);
+            if (!site) return;
+            
+            // Populate form
+            document.getElementById('edit-site-id').value = site.id;
+            document.getElementById('edit-site-name').value = site.name;
+            document.getElementById('edit-site-url').value = site.base_url;
+            document.getElementById('edit-site-description').value = site.description;
+            document.getElementById('edit-start-urls').value = site.start_urls.join('\n');
+            document.getElementById('edit-max-articles').value = site.max_articles || 100;
+            document.getElementById('edit-max-depth').value = site.max_depth || 3;
+            document.getElementById('edit-is-active').checked = site.is_active;
+            
+            // Show modal
+            document.getElementById('edit-modal').style.display = 'block';
+        }
+
+        async function handleEditSite(e) {
+            e.preventDefault();
+            
+            const siteId = document.getElementById('edit-site-id').value;
+            const formData = new FormData(e.target);
+            
+            const data = {
+                name: formData.get('name'),
+                description: formData.get('description'),
+                base_url: formData.get('base_url'),
+                start_urls: formData.get('start_urls').split('\n').filter(url => url.trim()),
+                limits: {
+                    max_articles: parseInt(formData.get('max_articles')),
+                    max_depth: parseInt(formData.get('max_depth'))
+                },
+                is_active: formData.get('is_active') === 'on'
+            };
+            
+            try {
+                await apiCall(`/sites/${siteId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(data)
+                });
+                
+                showAlert('success', 'Site updated successfully!');
+                document.getElementById('edit-modal').style.display = 'none';
+                loadSites();
+            } catch (error) {
+                console.error('Failed to update site:', error);
+            }
+        }
+
+        async function deleteSite(siteId) {
+            if (!confirm('Are you sure you want to delete this site?')) return;
+            
+            try {
+                await apiCall(`/sites/${siteId}`, {
+                    method: 'DELETE'
+                });
+                
+                showAlert('success', 'Site deleted successfully!');
+                loadSites();
+            } catch (error) {
+                console.error('Failed to delete site:', error);
+            }
+        }
+
+        async function crawlSite(siteId) {
+            try {
+                const response = await apiCall('/crawl/start', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        site_ids: [siteId]
+                    })
+                });
+                
+                showAlert('success', `Crawl started! Job ID: ${response.job_id}`);
+                loadCrawlJobs();
+            } catch (error) {
+                console.error('Failed to start crawl:', error);
+            }
+        }
+
+        async function startCrawlAll() {
+            const activeSites = sites.filter(s => s.is_active);
+            if (activeSites.length === 0) {
+                showAlert('error', 'No active sites to crawl!');
+                return;
+            }
+            
+            try {
+                const response = await apiCall('/crawl/start', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        site_ids: activeSites.map(s => s.id)
+                    })
+                });
+                
+                showAlert('success', `Crawl started for ${activeSites.length} sites! Job ID: ${response.job_id}`);
+                loadCrawlJobs();
+            } catch (error) {
+                console.error('Failed to start crawl:', error);
+            }
+        }
+
+        // Utility functions
+        function showAlert(type, message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            
+            document.body.insertBefore(alertDiv, document.body.firstChild);
+            
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+    </script>
+</body>
+</html> 
