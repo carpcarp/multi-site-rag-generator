@@ -181,7 +181,7 @@ class CrawlProgressManager:
     def _serialize_sets(self, obj):
         """Custom serializer for sets in JSON"""
         if isinstance(obj, set):
-            return list(obj)
+            return sorted(list(obj))
         if isinstance(obj, datetime):
             return obj.isoformat()
         if isinstance(obj, (CrawlJobStatus, SiteCrawlStatus)):
