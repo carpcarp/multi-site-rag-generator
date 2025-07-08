@@ -670,14 +670,15 @@ async def run_crawl_job(job_id: str, site_ids: List[str], force_recrawl: bool = 
                 if not site_config:
                     continue
                 
-                # Skip if recently crawled and not forcing recrawl
+                # Skip if recently crawled successfully and not forcing recrawl
                 if (not force_recrawl and 
                     site_config.last_crawled and 
-                    site_config.last_crawl_status == "completed"):
+                    site_config.last_crawl_status == "completed" and
+                    site_config.total_articles > 0):  # Only skip if previous crawl found content
                     
                     time_since_crawl = datetime.now() - site_config.last_crawled
                     if time_since_crawl.total_seconds() < 3600:  # 1 hour
-                        logger.info(f"Skipping {site_config.name} - recently crawled")
+                        logger.info(f"Skipping {site_config.name} - recently crawled successfully")
                         progress_manager.update_site_progress(
                             job_id, site_id, 
                             status=SiteCrawlStatus.SKIPPED,

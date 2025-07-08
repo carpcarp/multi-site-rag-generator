@@ -695,6 +695,54 @@
                     </div>
                 </div>
 
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="delay-seconds">Delay Between Requests (seconds)</label>
+                        <input type="number" id="delay-seconds" name="delay_seconds" value="1.0" min="0" max="10" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label for="timeout-seconds">Request Timeout (seconds)</label>
+                        <input type="number" id="timeout-seconds" name="timeout_seconds" value="30" min="5" max="120">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="respect-robots" name="respect_robots_txt" checked>
+                            Respect robots.txt
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="follow-redirects" name="follow_redirects" checked>
+                            Follow redirects
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="allowed-patterns">Allowed URL Patterns (regex, one per line)</label>
+                    <textarea id="allowed-patterns" name="allowed_patterns" placeholder=".*\\.html$&#10;/docs/.*"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="blocked-patterns">Blocked URL Patterns (regex, one per line)</label>
+                    <textarea id="blocked-patterns" name="blocked_patterns" placeholder="/admin/.*&#10;.*\\?.*=.*"></textarea>
+                </div>
+
+                <h3>Content Selectors (CSS selectors)</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="title-selector">Title Selector</label>
+                        <input type="text" id="title-selector" name="title_selector" placeholder="h1, .title, #main-title">
+                    </div>
+                    <div class="form-group">
+                        <label for="content-selector">Content Selector</label>
+                        <input type="text" id="content-selector" name="content_selector" placeholder=".content, #main-content, article">
+                    </div>
+                </div>
+
                 <button type="submit" class="btn-primary">Add Site</button>
             </form>
         </div>
@@ -759,6 +807,29 @@
 
                 <div class="form-row">
                     <div class="form-group">
+                        <label for="edit-crawl-strategy">Crawl Strategy</label>
+                        <select id="edit-crawl-strategy" name="crawl_strategy">
+                            <option value="breadth_first">Breadth First</option>
+                            <option value="depth_first">Depth First</option>
+                            <option value="sitemap">Sitemap</option>
+                            <option value="url_list">URL List</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-content-type">Content Type</label>
+                        <select id="edit-content-type" name="content_type">
+                            <option value="general">General</option>
+                            <option value="documentation">Documentation</option>
+                            <option value="blog">Blog</option>
+                            <option value="news">News</option>
+                            <option value="support">Support</option>
+                            <option value="api">API</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
                         <label for="edit-max-articles">Max Articles</label>
                         <input type="number" id="edit-max-articles" name="max_articles" min="1" max="10000">
                     </div>
@@ -768,11 +839,59 @@
                     </div>
                 </div>
 
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-delay-seconds">Delay Between Requests (seconds)</label>
+                        <input type="number" id="edit-delay-seconds" name="delay_seconds" min="0" max="10" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-timeout-seconds">Request Timeout (seconds)</label>
+                        <input type="number" id="edit-timeout-seconds" name="timeout_seconds" min="5" max="120">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="edit-respect-robots" name="respect_robots_txt">
+                            Respect robots.txt
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="edit-follow-redirects" name="follow_redirects">
+                            Follow redirects
+                        </label>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label>
                         <input type="checkbox" id="edit-is-active" name="is_active">
                         Active
                     </label>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-allowed-patterns">Allowed URL Patterns (regex, one per line)</label>
+                    <textarea id="edit-allowed-patterns" name="allowed_patterns"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-blocked-patterns">Blocked URL Patterns (regex, one per line)</label>
+                    <textarea id="edit-blocked-patterns" name="blocked_patterns"></textarea>
+                </div>
+
+                <h3>Content Selectors (CSS selectors)</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-title-selector">Title Selector</label>
+                        <input type="text" id="edit-title-selector" name="title_selector">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-content-selector">Content Selector</label>
+                        <input type="text" id="edit-content-selector" name="content_selector">
+                    </div>
                 </div>
 
                 <button type="submit" class="btn-primary">Update Site</button>
@@ -1203,8 +1322,20 @@
                 content_type: formData.get('content_type'),
                 limits: {
                     max_articles: parseInt(formData.get('max_articles')),
-                    max_depth: parseInt(formData.get('max_depth'))
-                }
+                    max_depth: parseInt(formData.get('max_depth')),
+                    delay_seconds: parseFloat(formData.get('delay_seconds')),
+                    timeout_seconds: parseInt(formData.get('timeout_seconds')),
+                    respect_robots_txt: formData.get('respect_robots_txt') === 'on',
+                    follow_redirects: formData.get('follow_redirects') === 'on'
+                },
+                selectors: {
+                    title: formData.get('title_selector') || null,
+                    content: formData.get('content_selector') || null
+                },
+                allowed_patterns: formData.get('allowed_patterns') ? 
+                    formData.get('allowed_patterns').split('\n').filter(p => p.trim()) : [],
+                blocked_patterns: formData.get('blocked_patterns') ? 
+                    formData.get('blocked_patterns').split('\n').filter(p => p.trim()) : []
             };
             
             try {
@@ -1225,7 +1356,7 @@
             const site = sites.find(s => s.id === siteId);
             if (!site) return;
             
-            // Populate form
+            // Populate basic form fields
             document.getElementById('edit-site-id').value = site.id;
             document.getElementById('edit-site-name').value = site.name;
             document.getElementById('edit-site-url').value = site.base_url;
@@ -1234,6 +1365,24 @@
             document.getElementById('edit-max-articles').value = site.max_articles || 100;
             document.getElementById('edit-max-depth').value = site.max_depth || 3;
             document.getElementById('edit-is-active').checked = site.is_active;
+            
+            // Populate strategy and content type
+            document.getElementById('edit-crawl-strategy').value = site.crawl_strategy || 'breadth_first';
+            document.getElementById('edit-content-type').value = site.content_type || 'general';
+            
+            // Populate limits
+            document.getElementById('edit-delay-seconds').value = site.delay_seconds || 1.0;
+            document.getElementById('edit-timeout-seconds').value = site.timeout_seconds || 30;
+            document.getElementById('edit-respect-robots').checked = site.respect_robots_txt !== false;
+            document.getElementById('edit-follow-redirects').checked = site.follow_redirects !== false;
+            
+            // Populate patterns
+            document.getElementById('edit-allowed-patterns').value = (site.allowed_patterns || []).join('\n');
+            document.getElementById('edit-blocked-patterns').value = (site.blocked_patterns || []).join('\n');
+            
+            // Populate selectors
+            document.getElementById('edit-title-selector').value = site.title_selector || '';
+            document.getElementById('edit-content-selector').value = site.content_selector || '';
             
             // Show modal
             document.getElementById('edit-modal').style.display = 'block';
@@ -1250,10 +1399,24 @@
                 description: formData.get('description'),
                 base_url: formData.get('base_url'),
                 start_urls: formData.get('start_urls').split('\n').filter(url => url.trim()),
+                crawl_strategy: formData.get('crawl_strategy'),
+                content_type: formData.get('content_type'),
                 limits: {
                     max_articles: parseInt(formData.get('max_articles')),
-                    max_depth: parseInt(formData.get('max_depth'))
+                    max_depth: parseInt(formData.get('max_depth')),
+                    delay_seconds: parseFloat(formData.get('delay_seconds')),
+                    timeout_seconds: parseInt(formData.get('timeout_seconds')),
+                    respect_robots_txt: formData.get('respect_robots_txt') === 'on',
+                    follow_redirects: formData.get('follow_redirects') === 'on'
                 },
+                selectors: {
+                    title: formData.get('title_selector') || null,
+                    content: formData.get('content_selector') || null
+                },
+                allowed_patterns: formData.get('allowed_patterns') ? 
+                    formData.get('allowed_patterns').split('\n').filter(p => p.trim()) : [],
+                blocked_patterns: formData.get('blocked_patterns') ? 
+                    formData.get('blocked_patterns').split('\n').filter(p => p.trim()) : [],
                 is_active: formData.get('is_active') === 'on'
             };
             

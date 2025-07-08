@@ -183,12 +183,13 @@ class CrawlProgressManager:
             return list(obj)
         if isinstance(obj, datetime):
             return obj.isoformat()
-        if hasattr(obj, '__dict__'):
-            return {k: self._serialize_sets(v) for k, v in obj.__dict__.items()}
+        if isinstance(obj, (CrawlJobStatus, SiteCrawlStatus)):
+            return obj.value
         if isinstance(obj, dict):
             return {k: self._serialize_sets(v) for k, v in obj.items()}
         if isinstance(obj, list):
             return [self._serialize_sets(v) for v in obj]
+        # Let dataclass asdict() handle object serialization instead of recursive __dict__ access
         return obj
     
     def _deserialize_sets(self, obj, progress_data=None):
