@@ -37,6 +37,13 @@ class CrawlLimitsRequest(BaseModel):
     max_file_size_mb: int = Field(10, ge=1, le=100)
     respect_robots_txt: bool = True
     follow_redirects: bool = True
+    
+    # Parallelization settings
+    max_concurrent_requests: int = Field(5, ge=1, le=20)
+    max_concurrent_sites: int = Field(3, ge=1, le=10)
+    enable_parallel_processing: bool = True
+    batch_size: int = Field(10, ge=1, le=100)
+    thread_pool_size: int = Field(4, ge=1, le=16)
 
 class SiteConfigRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
@@ -80,6 +87,13 @@ class CrawlLimitsResponse(BaseModel):
     max_file_size_mb: int
     respect_robots_txt: bool
     follow_redirects: bool
+    
+    # Parallelization settings
+    max_concurrent_requests: int
+    max_concurrent_sites: int
+    enable_parallel_processing: bool
+    batch_size: int
+    thread_pool_size: int
 
 class SiteSelectorsResponse(BaseModel):
     title: Optional[str] = None
@@ -298,7 +312,12 @@ def create_site_management_api() -> FastAPI:
                         timeout_seconds=site.limits.timeout_seconds,
                         max_file_size_mb=site.limits.max_file_size_mb,
                         respect_robots_txt=site.limits.respect_robots_txt,
-                        follow_redirects=site.limits.follow_redirects
+                        follow_redirects=site.limits.follow_redirects,
+                        max_concurrent_requests=site.limits.max_concurrent_requests,
+                        max_concurrent_sites=site.limits.max_concurrent_sites,
+                        enable_parallel_processing=site.limits.enable_parallel_processing,
+                        batch_size=site.limits.batch_size,
+                        thread_pool_size=site.limits.thread_pool_size
                     ),
                     selectors=SiteSelectorsResponse(
                         title=site.selectors.title,
@@ -350,7 +369,12 @@ def create_site_management_api() -> FastAPI:
                 timeout_seconds=site.limits.timeout_seconds,
                 max_file_size_mb=site.limits.max_file_size_mb,
                 respect_robots_txt=site.limits.respect_robots_txt,
-                follow_redirects=site.limits.follow_redirects
+                follow_redirects=site.limits.follow_redirects,
+                max_concurrent_requests=site.limits.max_concurrent_requests,
+                max_concurrent_sites=site.limits.max_concurrent_sites,
+                enable_parallel_processing=site.limits.enable_parallel_processing,
+                batch_size=site.limits.batch_size,
+                thread_pool_size=site.limits.thread_pool_size
             ),
             selectors=SiteSelectorsResponse(
                 title=site.selectors.title,
@@ -417,7 +441,12 @@ def create_site_management_api() -> FastAPI:
                     timeout_seconds=site.limits.timeout_seconds,
                     max_file_size_mb=site.limits.max_file_size_mb,
                     respect_robots_txt=site.limits.respect_robots_txt,
-                    follow_redirects=site.limits.follow_redirects
+                    follow_redirects=site.limits.follow_redirects,
+                    max_concurrent_requests=site.limits.max_concurrent_requests,
+                    max_concurrent_sites=site.limits.max_concurrent_sites,
+                    enable_parallel_processing=site.limits.enable_parallel_processing,
+                    batch_size=site.limits.batch_size,
+                    thread_pool_size=site.limits.thread_pool_size
                 ),
                 selectors=SiteSelectorsResponse(
                     title=site.selectors.title,
@@ -490,7 +519,12 @@ def create_site_management_api() -> FastAPI:
                     timeout_seconds=site.limits.timeout_seconds,
                     max_file_size_mb=site.limits.max_file_size_mb,
                     respect_robots_txt=site.limits.respect_robots_txt,
-                    follow_redirects=site.limits.follow_redirects
+                    follow_redirects=site.limits.follow_redirects,
+                    max_concurrent_requests=site.limits.max_concurrent_requests,
+                    max_concurrent_sites=site.limits.max_concurrent_sites,
+                    enable_parallel_processing=site.limits.enable_parallel_processing,
+                    batch_size=site.limits.batch_size,
+                    thread_pool_size=site.limits.thread_pool_size
                 ),
                 selectors=SiteSelectorsResponse(
                     title=site.selectors.title,
@@ -563,7 +597,12 @@ def create_site_management_api() -> FastAPI:
                     timeout_seconds=site.limits.timeout_seconds,
                     max_file_size_mb=site.limits.max_file_size_mb,
                     respect_robots_txt=site.limits.respect_robots_txt,
-                    follow_redirects=site.limits.follow_redirects
+                    follow_redirects=site.limits.follow_redirects,
+                    max_concurrent_requests=site.limits.max_concurrent_requests,
+                    max_concurrent_sites=site.limits.max_concurrent_sites,
+                    enable_parallel_processing=site.limits.enable_parallel_processing,
+                    batch_size=site.limits.batch_size,
+                    thread_pool_size=site.limits.thread_pool_size
                 ),
                 selectors=SiteSelectorsResponse(
                     title=site.selectors.title,

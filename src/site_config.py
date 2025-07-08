@@ -58,6 +58,13 @@ class CrawlLimits:
     max_file_size_mb: int = 10
     respect_robots_txt: bool = True
     follow_redirects: bool = True
+    
+    # Parallelization settings
+    max_concurrent_requests: int = 5
+    max_concurrent_sites: int = 3
+    enable_parallel_processing: bool = True
+    batch_size: int = 10
+    thread_pool_size: int = 4
 
 
 @dataclass
@@ -327,7 +334,12 @@ def create_site_from_template(template_name: str,
                 max_articles=500,
                 max_depth=4,
                 delay_seconds=1.0,
-                respect_robots_txt=True
+                respect_robots_txt=True,
+                max_concurrent_requests=5,
+                max_concurrent_sites=2,
+                enable_parallel_processing=True,
+                batch_size=15,
+                thread_pool_size=4
             ),
             "selectors": SiteSelectors(
                 title="h1, .page-title, .doc-title",
@@ -345,7 +357,12 @@ def create_site_from_template(template_name: str,
             "limits": CrawlLimits(
                 max_articles=200,
                 max_depth=3,
-                delay_seconds=1.5
+                delay_seconds=1.5,
+                max_concurrent_requests=3,
+                max_concurrent_sites=2,
+                enable_parallel_processing=True,
+                batch_size=8,
+                thread_pool_size=3
             ),
             "selectors": SiteSelectors(
                 title="h1, .post-title, .article-title",
@@ -364,7 +381,12 @@ def create_site_from_template(template_name: str,
             "limits": CrawlLimits(
                 max_articles=300,
                 max_depth=3,
-                delay_seconds=1.0
+                delay_seconds=1.0,
+                max_concurrent_requests=4,
+                max_concurrent_sites=2,
+                enable_parallel_processing=True,
+                batch_size=12,
+                thread_pool_size=3
             ),
             "selectors": SiteSelectors(
                 title="h1, .question, .faq-title",
