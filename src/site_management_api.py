@@ -72,6 +72,22 @@ class SiteConfigRequest(BaseModel):
             raise ValueError("Chunk overlap must be less than chunk size")
         return v
 
+class CrawlLimitsResponse(BaseModel):
+    max_articles: int
+    max_depth: int
+    delay_seconds: float
+    timeout_seconds: int
+    max_file_size_mb: int
+    respect_robots_txt: bool
+    follow_redirects: bool
+
+class SiteSelectorsResponse(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    exclude: List[str] = Field(default_factory=list)
+
 class SiteConfigResponse(BaseModel):
     id: str
     name: str
@@ -80,15 +96,22 @@ class SiteConfigResponse(BaseModel):
     start_urls: List[str]
     crawl_strategy: str
     content_type: str
+    limits: CrawlLimitsResponse
+    selectors: SiteSelectorsResponse
+    allowed_patterns: List[str]
+    blocked_patterns: List[str]
     categories: List[str]
+    auto_categorize: bool
+    chunk_size: int
+    chunk_overlap: int
+    language: str
     is_active: bool
     total_articles: int
+    total_chunks: int
     last_crawl_status: str
     created_at: str
     updated_at: str
     last_crawled: Optional[str] = None
-    max_articles: int
-    max_depth: int
 
 class CrawlJobRequest(BaseModel):
     site_ids: List[str] = Field(..., min_items=1, max_items=10)
@@ -236,15 +259,36 @@ def create_site_management_api() -> FastAPI:
                     start_urls=site.start_urls,
                     crawl_strategy=site.crawl_strategy.value,
                     content_type=site.content_type.value,
+                    limits=CrawlLimitsResponse(
+                        max_articles=site.limits.max_articles,
+                        max_depth=site.limits.max_depth,
+                        delay_seconds=site.limits.delay_seconds,
+                        timeout_seconds=site.limits.timeout_seconds,
+                        max_file_size_mb=site.limits.max_file_size_mb,
+                        respect_robots_txt=site.limits.respect_robots_txt,
+                        follow_redirects=site.limits.follow_redirects
+                    ),
+                    selectors=SiteSelectorsResponse(
+                        title=site.selectors.title,
+                        content=site.selectors.content,
+                        description=site.selectors.description,
+                        category=site.selectors.category,
+                        exclude=site.selectors.exclude
+                    ),
+                    allowed_patterns=site.allowed_patterns,
+                    blocked_patterns=site.blocked_patterns,
                     categories=site.categories,
+                    auto_categorize=site.auto_categorize,
+                    chunk_size=site.chunk_size,
+                    chunk_overlap=site.chunk_overlap,
+                    language=site.language,
                     is_active=site.is_active,
                     total_articles=site.total_articles,
+                    total_chunks=site.total_chunks,
                     last_crawl_status=site.last_crawl_status,
                     created_at=site.created_at.isoformat(),
                     updated_at=site.updated_at.isoformat(),
-                    last_crawled=site.last_crawled.isoformat() if site.last_crawled else None,
-                    max_articles=site.limits.max_articles if site.limits else 100,
-                    max_depth=site.limits.max_depth if site.limits else 3
+                    last_crawled=site.last_crawled.isoformat() if site.last_crawled else None
                 )
                 for site in sites
             ]
@@ -267,15 +311,36 @@ def create_site_management_api() -> FastAPI:
             start_urls=site.start_urls,
             crawl_strategy=site.crawl_strategy.value,
             content_type=site.content_type.value,
+            limits=CrawlLimitsResponse(
+                max_articles=site.limits.max_articles,
+                max_depth=site.limits.max_depth,
+                delay_seconds=site.limits.delay_seconds,
+                timeout_seconds=site.limits.timeout_seconds,
+                max_file_size_mb=site.limits.max_file_size_mb,
+                respect_robots_txt=site.limits.respect_robots_txt,
+                follow_redirects=site.limits.follow_redirects
+            ),
+            selectors=SiteSelectorsResponse(
+                title=site.selectors.title,
+                content=site.selectors.content,
+                description=site.selectors.description,
+                category=site.selectors.category,
+                exclude=site.selectors.exclude
+            ),
+            allowed_patterns=site.allowed_patterns,
+            blocked_patterns=site.blocked_patterns,
             categories=site.categories,
+            auto_categorize=site.auto_categorize,
+            chunk_size=site.chunk_size,
+            chunk_overlap=site.chunk_overlap,
+            language=site.language,
             is_active=site.is_active,
             total_articles=site.total_articles,
+            total_chunks=site.total_chunks,
             last_crawl_status=site.last_crawl_status,
             created_at=site.created_at.isoformat(),
             updated_at=site.updated_at.isoformat(),
-            last_crawled=site.last_crawled.isoformat() if site.last_crawled else None,
-            max_articles=site.limits.max_articles,
-            max_depth=site.limits.max_depth
+            last_crawled=site.last_crawled.isoformat() if site.last_crawled else None
         )
     
     @app.post("/sites", response_model=SiteConfigResponse)
@@ -313,15 +378,36 @@ def create_site_management_api() -> FastAPI:
                 start_urls=site.start_urls,
                 crawl_strategy=site.crawl_strategy.value,
                 content_type=site.content_type.value,
+                limits=CrawlLimitsResponse(
+                    max_articles=site.limits.max_articles,
+                    max_depth=site.limits.max_depth,
+                    delay_seconds=site.limits.delay_seconds,
+                    timeout_seconds=site.limits.timeout_seconds,
+                    max_file_size_mb=site.limits.max_file_size_mb,
+                    respect_robots_txt=site.limits.respect_robots_txt,
+                    follow_redirects=site.limits.follow_redirects
+                ),
+                selectors=SiteSelectorsResponse(
+                    title=site.selectors.title,
+                    content=site.selectors.content,
+                    description=site.selectors.description,
+                    category=site.selectors.category,
+                    exclude=site.selectors.exclude
+                ),
+                allowed_patterns=site.allowed_patterns,
+                blocked_patterns=site.blocked_patterns,
                 categories=site.categories,
+                auto_categorize=site.auto_categorize,
+                chunk_size=site.chunk_size,
+                chunk_overlap=site.chunk_overlap,
+                language=site.language,
                 is_active=site.is_active,
                 total_articles=site.total_articles,
+                total_chunks=site.total_chunks,
                 last_crawl_status=site.last_crawl_status,
                 created_at=site.created_at.isoformat(),
                 updated_at=site.updated_at.isoformat(),
-                last_crawled=site.last_crawled.isoformat() if site.last_crawled else None,
-                max_articles=site.limits.max_articles,
-                max_depth=site.limits.max_depth
+                last_crawled=site.last_crawled.isoformat() if site.last_crawled else None
             )
             
         except Exception as e:
@@ -365,15 +451,36 @@ def create_site_management_api() -> FastAPI:
                 start_urls=site.start_urls,
                 crawl_strategy=site.crawl_strategy.value,
                 content_type=site.content_type.value,
+                limits=CrawlLimitsResponse(
+                    max_articles=site.limits.max_articles,
+                    max_depth=site.limits.max_depth,
+                    delay_seconds=site.limits.delay_seconds,
+                    timeout_seconds=site.limits.timeout_seconds,
+                    max_file_size_mb=site.limits.max_file_size_mb,
+                    respect_robots_txt=site.limits.respect_robots_txt,
+                    follow_redirects=site.limits.follow_redirects
+                ),
+                selectors=SiteSelectorsResponse(
+                    title=site.selectors.title,
+                    content=site.selectors.content,
+                    description=site.selectors.description,
+                    category=site.selectors.category,
+                    exclude=site.selectors.exclude
+                ),
+                allowed_patterns=site.allowed_patterns,
+                blocked_patterns=site.blocked_patterns,
                 categories=site.categories,
+                auto_categorize=site.auto_categorize,
+                chunk_size=site.chunk_size,
+                chunk_overlap=site.chunk_overlap,
+                language=site.language,
                 is_active=site.is_active,
                 total_articles=site.total_articles,
+                total_chunks=site.total_chunks,
                 last_crawl_status=site.last_crawl_status,
                 created_at=site.created_at.isoformat(),
                 updated_at=site.updated_at.isoformat(),
-                last_crawled=site.last_crawled.isoformat() if site.last_crawled else None,
-                max_articles=site.limits.max_articles,
-                max_depth=site.limits.max_depth
+                last_crawled=site.last_crawled.isoformat() if site.last_crawled else None
             )
             
         except Exception as e:
@@ -417,15 +524,36 @@ def create_site_management_api() -> FastAPI:
                 start_urls=site.start_urls,
                 crawl_strategy=site.crawl_strategy.value,
                 content_type=site.content_type.value,
+                limits=CrawlLimitsResponse(
+                    max_articles=site.limits.max_articles,
+                    max_depth=site.limits.max_depth,
+                    delay_seconds=site.limits.delay_seconds,
+                    timeout_seconds=site.limits.timeout_seconds,
+                    max_file_size_mb=site.limits.max_file_size_mb,
+                    respect_robots_txt=site.limits.respect_robots_txt,
+                    follow_redirects=site.limits.follow_redirects
+                ),
+                selectors=SiteSelectorsResponse(
+                    title=site.selectors.title,
+                    content=site.selectors.content,
+                    description=site.selectors.description,
+                    category=site.selectors.category,
+                    exclude=site.selectors.exclude
+                ),
+                allowed_patterns=site.allowed_patterns,
+                blocked_patterns=site.blocked_patterns,
                 categories=site.categories,
+                auto_categorize=site.auto_categorize,
+                chunk_size=site.chunk_size,
+                chunk_overlap=site.chunk_overlap,
+                language=site.language,
                 is_active=site.is_active,
                 total_articles=site.total_articles,
+                total_chunks=site.total_chunks,
                 last_crawl_status=site.last_crawl_status,
                 created_at=site.created_at.isoformat(),
                 updated_at=site.updated_at.isoformat(),
-                last_crawled=site.last_crawled.isoformat() if site.last_crawled else None,
-                max_articles=site.limits.max_articles,
-                max_depth=site.limits.max_depth
+                last_crawled=site.last_crawled.isoformat() if site.last_crawled else None
             )
             
         except Exception as e:

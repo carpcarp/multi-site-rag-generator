@@ -608,6 +608,7 @@
     <script>
         const API_BASE = 'http://localhost:8001';
         let currentEditingSiteId = null;
+        let cachedSites = [];
 
         // Tab management
         function showTab(tabName) {
@@ -674,7 +675,10 @@
                 showLoading('Loading sites...');
                 const response = await fetch(`${API_BASE}/sites`);
                 const data = await response.json();
-                displaySites(data.sites || []);
+                // Handle both array response and object with sites property
+                const sites = Array.isArray(data) ? data : (data.sites || []);
+                cachedSites = sites; // Cache the sites data
+                displaySites(sites);
             } catch (error) {
                 console.error('Error loading sites:', error);
                 showNotification('Error loading sites', 'error');
@@ -835,36 +839,74 @@
         }
 
         async function editSite(siteId) {
+            console.log('editSite called with siteId:', siteId);
+            
             try {
                 showLoading('Loading site configuration...');
-                const response = await fetch(`${API_BASE}/sites/${siteId}`);
-                const site = await response.json();
+                
+                // Refresh sites data to get the most current configuration
+                const response = await fetch(`${API_BASE}/sites`);
+                const data = await response.json();
+                const sites = Array.isArray(data) ? data : (data.sites || []);
+                cachedSites = sites; // Update cache with fresh data
+                
+                // Find the site in the fresh data
+                const site = sites.find(s => s.id === siteId);
+                if (!site) {
+                    throw new Error('Site not found');
+                }
+                
+                console.log('Site data found:', site);
+                console.log('Site limits:', site.limits);
                 
                 currentEditingSiteId = siteId;
                 
                 // Populate form
                 const form = document.getElementById('edit-site-form');
-                form.name.value = site.name;
+                if (!form) {
+                    console.error('Edit form not found!');
+                    showNotification('Edit form not found', 'error');
+                    return;
+                }
+                
+                console.log('Populating form fields...');
+                form.name.value = site.name || '';
                 form.description.value = site.description || '';
-                form.base_url.value = site.base_url;
-                form.start_urls.value = site.start_urls.join('\n');
-                form.crawl_strategy.value = site.crawl_strategy;
-                form.content_type.value = site.content_type;
-                form.max_articles.value = site.limits.max_articles;
-                form.max_depth.value = site.limits.max_depth;
-                form.delay_seconds.value = site.limits.delay_seconds;
-                form.timeout_seconds.value = site.limits.timeout_seconds;
-                form.respect_robots_txt.checked = site.limits.respect_robots_txt;
-                form.follow_redirects.checked = site.limits.follow_redirects;
+                form.base_url.value = site.base_url || '';
+                form.start_urls.value = (site.start_urls || []).join('\n');
+                form.crawl_strategy.value = site.crawl_strategy || 'breadth_first';
+                form.content_type.value = site.content_type || 'general';
+                
+                // Handle limits - use proper nested structure
+                console.log('Site limits object:', site.limits);
+                
+                form.max_articles.value = site.limits.max_articles || 1000;
+                form.max_depth.value = site.limits.max_depth || 3;
+                form.delay_seconds.value = site.limits.delay_seconds || 1.0;
+                form.timeout_seconds.value = site.limits.timeout_seconds || 30;
+                form.respect_robots_txt.checked = site.limits.respect_robots_txt || false;
+                form.follow_redirects.checked = site.limits.follow_redirects !== false; // Default to true
+                
+                // Handle selectors - use proper nested structure
+                console.log('Site selectors object:', site.selectors);
+                
                 form.title_selector.value = site.selectors.title || '';
                 form.content_selector.value = site.selectors.content || '';
-                form.allowed_patterns.value = site.allowed_patterns.join('\n');
-                form.blocked_patterns.value = site.blocked_patterns.join('\n');
+                
+                form.allowed_patterns.value = (site.allowed_patterns || []).join('\n');
+                form.blocked_patterns.value = (site.blocked_patterns || []).join('\n');
+                
+                console.log('Form populated with values:', {
+                    max_articles: form.max_articles.value,
+                    max_depth: form.max_depth.value,
+                    delay_seconds: form.delay_seconds.value
+                });
                 
                 showModal('edit-site-modal');
+                console.log('Modal should be visible now');
             } catch (error) {
-                console.error('Error loading site:', error);
-                showNotification('Error loading site configuration', 'error');
+                console.error('Error in editSite:', error);
+                showNotification('Error loading site configuration: ' + error.message, 'error');
             } finally {
                 hideLoading();
             }
