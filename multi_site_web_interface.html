@@ -627,7 +627,7 @@
         let jobsRefreshInterval = null; // Auto-refresh interval for jobs tab
 
         // Tab management
-        function showTab(tabName) {
+        function showTab(tabName, updateUrl = true) {
             // Stop any existing refresh interval
             if (jobsRefreshInterval) {
                 clearInterval(jobsRefreshInterval);
@@ -649,6 +649,11 @@
             
             // Add active class to selected tab button
             document.querySelector(`[data-tab="${tabName}"]`).classList.add('is-active');
+            
+            // Update URL hash to persist tab selection
+            if (updateUrl) {
+                window.location.hash = tabName;
+            }
             
             // Load tab-specific content
             if (tabName === 'sites') {
@@ -1693,10 +1698,26 @@
             }
         });
 
+        // Function to get current tab from URL hash or default
+        function getInitialTab() {
+            const hash = window.location.hash.substring(1); // Remove # symbol
+            const validTabs = ['sites', 'search', 'jobs', 'stats'];
+            return validTabs.includes(hash) ? hash : 'sites';
+        }
+
+        // Handle browser back/forward navigation
+        window.addEventListener('hashchange', function() {
+            const newTab = getInitialTab();
+            showTab(newTab, false); // Don't update URL since it's already changed
+        });
+
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
             initializeTheme(); // Initialize theme before anything else
-            showTab('sites'); // Show sites tab by default
+            
+            // Restore tab from URL hash or show default
+            const initialTab = getInitialTab();
+            showTab(initialTab, false); // Don't update URL on initial load
         });
     </script>
 </body>
