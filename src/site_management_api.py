@@ -185,7 +185,7 @@ class CrawlJobManager:
                         'site_results': {},
                         'errors': [],
                         'progress': progress,
-                        'total_articles': progress.total_articles
+                        'total_articles': progress.current_total_articles  # Use real-time count
                     }
                     
                     # Set completion info if available
@@ -317,7 +317,7 @@ class CrawlJobManager:
             'site_results': {},
             'errors': [],
             'progress': progress,
-            'total_articles': progress.total_articles
+            'total_articles': progress.current_total_articles  # Use real-time count
         }
         if progress.completion_time:
             self.jobs[job_id]['completed_at'] = progress.completion_time.isoformat()
@@ -782,13 +782,19 @@ def create_site_management_api() -> FastAPI:
         if not job:
             raise HTTPException(status_code=404, detail="Crawl job not found")
         
+        # Get real-time article count if job is active
+        total_articles = job.get('total_articles', 0)
+        progress = job_manager.get_job_progress(job_id)
+        if progress:
+            total_articles = progress.current_total_articles
+        
         return CrawlStatusResponse(
             job_id=job_id,
             status=job['status'],
             site_results=job.get('site_results', {}),
             started_at=job['started_at'],
             completed_at=job.get('completed_at'),
-            total_articles=job.get('total_articles', 0),
+            total_articles=total_articles,
             errors=job.get('errors', [])
         )
 
@@ -928,20 +934,29 @@ def create_site_management_api() -> FastAPI:
     
     @app.get("/crawl/jobs")
     async def list_crawl_jobs():
-        """List all crawl jobs"""
-        return {
-            "jobs": [
-                {
-                    "job_id": job_id,
-                    "status": job['status'],
-                    "site_ids": job['site_ids'],
-                    "started_at": job['started_at'],
-                    "completed_at": job.get('completed_at'),
-                    "total_articles": job.get('total_articles', 0)
-                }
-                for job_id, job in job_manager.jobs.items()
-            ]
-        }
+        """List all crawl jobs with real-time article counts"""
+        jobs_list = []
+        for job_id, job in job_manager.jobs.items():
+            job_info = {
+                "job_id": job_id,
+                "status": job['status'],
+                "site_ids": job['site_ids'],
+                "started_at": job['started_at'],
+                "completed_at": job.get('completed_at'),
+                "total_articles": job.get('total_articles', 0)
+            }
+            
+            # Update with real-time article count if available
+            progress = job_manager.get_job_progress(job_id)
+            if progress:
+                job_info['total_articles'] = progress.current_total_articles
+                job_info['sites_completed'] = progress.sites_completed
+                job_info['sites_total'] = len(progress.site_progresses)
+                job_info['last_update'] = progress.last_update.isoformat()
+            
+            jobs_list.append(job_info)
+        
+        return {"jobs": jobs_list}
     
     @app.get("/crawl/{job_id}/progress")
     async def get_detailed_progress(job_id: str):
@@ -978,7 +993,9 @@ def create_site_management_api() -> FastAPI:
             "overall_progress_percentage": progress.overall_progress_percentage,
             "sites_completed": progress.sites_completed,
             "sites_failed": progress.sites_failed,
-            "total_articles": progress.total_articles,
+            "total_articles": progress.current_total_articles,  # Real-time count
+            "total_articles_processed": progress.current_total_processed_articles,  # Processed count
+            "total_articles_final": progress.total_articles,  # Final count (only set when complete)
             "total_chunks": progress.total_chunks,
             "total_errors": progress.total_errors,
             "estimated_time_remaining": progress.estimated_time_remaining,

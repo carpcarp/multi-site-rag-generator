@@ -133,6 +133,16 @@ class JobProgress:
         self.last_update = datetime.now()
     
     @property
+    def current_total_articles(self) -> int:
+        """Calculate real-time total articles found across all sites"""
+        return sum(progress.articles_found for progress in self.site_progresses.values())
+    
+    @property
+    def current_total_processed_articles(self) -> int:
+        """Calculate real-time total processed articles across all sites"""
+        return sum(progress.articles_processed for progress in self.site_progresses.values())
+    
+    @property
     def overall_progress_percentage(self) -> float:
         """Calculate overall job progress"""
         if not self.site_progresses:
@@ -306,6 +316,10 @@ class CrawlProgressManager:
         # Update status if actively crawling
         if site_progress.status == SiteCrawlStatus.PENDING:
             site_progress.status = SiteCrawlStatus.CRAWLING
+        
+        # Update job-level timestamp for real-time updates
+        job_progress = self.active_jobs[job_id]
+        job_progress.last_update = datetime.now()
         
         self.update_site_progress(job_id, site_id)
         return True
