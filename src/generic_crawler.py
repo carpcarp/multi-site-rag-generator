@@ -544,12 +544,25 @@ class GenericWebCrawler:
     def _normalize_url(self, url: str) -> str:
         """Normalize URL by removing query parameters and fragments for uniqueness checking"""
         try:
+            # Handle edge cases
+            if not url or not url.strip():
+                return url
+            
             parsed = urlparse(url)
+            
+            # If parsing fails completely, return original URL
+            if not parsed.scheme and not parsed.netloc:
+                return url
+            
             # Remove query parameters and fragments, keep only scheme, netloc, and path
             normalized = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
-            # Remove trailing slash for consistency
-            if normalized.endswith('/') and len(parsed.path) > 1:
+            
+            # Remove trailing slash for consistency, but only if there's a path
+            if normalized.endswith('/') and parsed.path == '/':
                 normalized = normalized[:-1]
+            elif normalized.endswith('/') and len(parsed.path) > 1:
+                normalized = normalized[:-1]
+            
             return normalized
         except Exception:
             return url
@@ -571,7 +584,7 @@ class GenericWebCrawler:
                 if (self._is_valid_url(full_url) and 
                     normalized_url not in seen_normalized and 
                     normalized_url not in {self._normalize_url(u) for u in self.crawled_urls}):
-                    links.append(full_url)
+                    links.append(normalized_url)  # Store normalized URL instead of full_url
                     seen_normalized.add(normalized_url)
             
             return links[:200]  # Increase limit to crawl more links
