@@ -7,135 +7,9 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Light theme (default) */
-        :root {
-            --bg-primary: hsl(0, 0%, 98%);
-            --bg-secondary: hsl(0, 0%, 100%);
-            --bg-tertiary: hsl(0, 0%, 96%);
-            --text-primary: hsl(0, 0%, 21%);
-            --text-secondary: hsl(0, 0%, 48%);
-            --border-color: hsl(0, 0%, 86%);
-            --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            --hero-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
-        /* Dark theme */
-        [data-theme="dark"] {
-            --bg-primary: hsl(0, 0%, 14%);
-            --bg-secondary: hsl(0, 0%, 18%);
-            --bg-tertiary: hsl(0, 0%, 21%);
-            --text-primary: hsl(0, 0%, 96%);
-            --text-secondary: hsl(0, 0%, 71%);
-            --border-color: hsl(0, 0%, 29%);
-            --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-            --hero-bg: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-        }
-
-        /* Apply theme variables */
-        html {
-            background-color: var(--bg-primary) !important;
-            transition: background-color 0.3s ease;
-        }
-
-        body {
-            background-color: var(--bg-primary) !important;
-            color: var(--text-primary) !important;
-            transition: background-color 0.3s ease, color 0.3s ease;
-            min-height: 100vh;
-        }
-
-        [data-theme="dark"] .hero.is-dark {
-            background: var(--hero-bg);
-        }
-
-        [data-theme="dark"] .card,
-        [data-theme="dark"] .modal-card,
-        [data-theme="dark"] .box {
-            background-color: var(--bg-secondary) !important;
-            color: var(--text-primary) !important;
-            border-color: var(--border-color) !important;
-        }
-
-        [data-theme="dark"] .input,
-        [data-theme="dark"] .textarea,
-        [data-theme="dark"] .select select {
-            background-color: var(--bg-tertiary) !important;
-            color: var(--text-primary) !important;
-            border-color: var(--border-color) !important;
-        }
-
-        [data-theme="dark"] .input:focus,
-        [data-theme="dark"] .textarea:focus,
-        [data-theme="dark"] .select select:focus {
-            border-color: hsl(217, 71%, 53%) !important;
-            box-shadow: 0 0 0 0.125em rgba(72, 95, 199, 0.25) !important;
-        }
-
-        [data-theme="dark"] .tabs a {
-            color: var(--text-secondary) !important;
-        }
-
-        [data-theme="dark"] .tabs li.is-active a {
-            color: var(--text-primary) !important;
-            border-bottom-color: hsl(217, 71%, 53%) !important;
-        }
-
-        [data-theme="dark"] .title {
-            color: var(--text-primary) !important;
-        }
-
-        [data-theme="dark"] .subtitle {
-            color: var(--text-secondary) !important;
-        }
-
-        [data-theme="dark"] .modal-background {
-            background-color: rgba(0, 0, 0, 0.8) !important;
-        }
-
-        [data-theme="dark"] .notification.is-info {
-            background-color: hsl(204, 86%, 20%) !important;
-            color: hsl(204, 86%, 85%) !important;
-        }
-
-        [data-theme="dark"] .card-footer-item {
-            color: var(--text-secondary) !important;
-            border-color: var(--border-color) !important;
-        }
-
-        [data-theme="dark"] .card-footer-item:hover {
-            color: var(--text-primary) !important;
-            background-color: var(--bg-tertiary) !important;
-        }
-
-        [data-theme="dark"] .level {
-            color: var(--text-primary) !important;
-        }
-
-        [data-theme="dark"] .content {
-            color: var(--text-primary) !important;
-        }
-
-        [data-theme="dark"] .media-content .title,
-        [data-theme="dark"] .media-content .subtitle {
-            color: var(--text-primary) !important;
-        }
-
-        [data-theme="dark"] .has-text-grey {
-            color: var(--text-secondary) !important;
-        }
-
-        .hero.is-dark {
-            background: var(--hero-bg);
-        }
-        
-        .notification.is-transparent {
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
-        }
-        
+        /* Custom component styling */
         .site-card {
             transition: transform 0.2s ease;
-            box-shadow: var(--shadow);
         }
         
         .site-card:hover {
@@ -157,38 +31,28 @@
         }
         
         .crawl-status.completed {
-            background: #48c774;
+            background: hsl(153, 53%, 53%);
             color: white;
         }
         
         .crawl-status.failed {
-            background: #f14668;
+            background: hsl(348, 86%, 61%);
             color: white;
         }
         
         .crawl-status.running {
-            background: #3273dc;
+            background: hsl(217, 71%, 53%);
             color: white;
         }
         
         .crawl-status.no_content_found {
-            background: #ffdd57;
-            color: #363636;
+            background: hsl(48, 100%, 67%);
+            color: hsl(0, 0%, 21%);
         }
 
-        /* Loading spinner for dark mode */
-        [data-theme="dark"] .spinner {
-            border: 4px solid var(--border-color);
-            border-top: 4px solid hsl(217, 71%, 53%);
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 10px;
-        }
-
+        /* Loading spinner */
         .spinner {
-            border: 4px solid var(--border-color);
+            border: 4px solid hsl(0, 0%, 86%);
             border-top: 4px solid hsl(217, 71%, 53%);
             border-radius: 50%;
             width: 40px;
@@ -200,6 +64,11 @@
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+
+        /* Smooth transitions for theme changes */
+        * {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
         }
     </style>
 </head>
@@ -1335,32 +1204,21 @@
 
         function toggleTheme() {
             const currentTheme = document.documentElement.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            const newTheme = currentTheme === 'dark' ? null : 'dark';
             
-            document.documentElement.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            
-            const button = document.querySelector('[onclick="toggleTheme()"]');
-            const icon = button.querySelector('i');
-            const text = button.querySelector('span:last-child');
-            
+            // Use Bulma's official data-theme approach
             if (newTheme === 'dark') {
-                icon.className = 'fas fa-sun';
-                text.textContent = 'Light Mode';
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
             } else {
-                icon.className = 'fas fa-moon';
-                text.textContent = 'Dark Mode';
+                document.documentElement.removeAttribute('data-theme');
+                localStorage.setItem('theme', 'light');
             }
+            
+            updateThemeButton(newTheme);
         }
 
-        // Initialize theme on page load
-        function initializeTheme() {
-            const savedTheme = localStorage.getItem('theme');
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const theme = savedTheme || (prefersDark ? 'dark' : 'light');
-            
-            document.documentElement.setAttribute('data-theme', theme);
-            
+        function updateThemeButton(theme) {
             const button = document.querySelector('[onclick="toggleTheme()"]');
             const icon = button.querySelector('i');
             const text = button.querySelector('span:last-child');
@@ -1373,6 +1231,41 @@
                 text.textContent = 'Dark Mode';
             }
         }
+
+        // Initialize theme on page load using Bulma's approach
+        function initializeTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            
+            // Check system preference if no saved theme
+            let theme = savedTheme;
+            if (!theme) {
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                theme = prefersDark ? 'dark' : 'light';
+            }
+            
+            // Apply theme using Bulma's data-theme attribute
+            if (theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+            }
+            
+            updateThemeButton(theme);
+        }
+
+        // Listen for system theme changes
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            // Only auto-switch if user hasn't manually set a theme
+            if (!localStorage.getItem('theme')) {
+                const theme = e.matches ? 'dark' : 'light';
+                if (theme === 'dark') {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                } else {
+                    document.documentElement.removeAttribute('data-theme');
+                }
+                updateThemeButton(theme);
+            }
+        });
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
