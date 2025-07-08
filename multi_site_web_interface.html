@@ -49,6 +49,21 @@
             background: hsl(48, 100%, 67%);
             color: hsl(0, 0%, 21%);
         }
+        
+        .crawl-status.paused {
+            background: hsl(204, 86%, 53%);
+            color: white;
+        }
+        
+        .crawl-status.cancelled {
+            background: hsl(0, 0%, 48%);
+            color: white;
+        }
+        
+        .crawl-status.pending {
+            background: hsl(271, 100%, 71%);
+            color: white;
+        }
 
         /* Loading spinner */
         .spinner {
@@ -609,9 +624,16 @@
         const API_BASE = 'http://localhost:8001';
         let currentEditingSiteId = null;
         let cachedSites = [];
+        let jobsRefreshInterval = null; // Auto-refresh interval for jobs tab
 
         // Tab management
         function showTab(tabName) {
+            // Stop any existing refresh interval
+            if (jobsRefreshInterval) {
+                clearInterval(jobsRefreshInterval);
+                jobsRefreshInterval = null;
+            }
+            
             // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.add('is-hidden');
@@ -633,6 +655,7 @@
                 loadSites();
             } else if (tabName === 'jobs') {
                 loadCrawlJobs();
+                startJobsAutoRefresh();
             } else if (tabName === 'stats') {
                 loadStatistics();
             }
@@ -646,13 +669,32 @@
             });
         });
 
+        // Auto-refresh management for jobs tab
+        function startJobsAutoRefresh() {
+            // Refresh every 3 seconds when jobs tab is active
+            jobsRefreshInterval = setInterval(() => {
+                // Only refresh if jobs tab is still active
+                const jobsTab = document.getElementById('jobs-tab');
+                if (!jobsTab.classList.contains('is-hidden')) {
+                    loadCrawlJobs();
+                }
+            }, 3000);
+        }
+
         // Modal management
         function showModal(modalId) {
             document.getElementById(modalId).classList.add('is-active');
         }
 
         function closeModal(modalId) {
-            document.getElementById(modalId).classList.remove('is-active');
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.remove('is-active');
+                // Remove dynamically created modals from DOM
+                if (modalId === 'job-details-modal') {
+                    setTimeout(() => modal.remove(), 300); // Wait for CSS transition
+                }
+            }
         }
 
         function showAddSiteModal() {
@@ -778,9 +820,77 @@
                 case 'completed': return 'completed';
                 case 'failed': return 'failed';
                 case 'running': return 'running';
+                case 'paused': return 'paused';
+                case 'cancelled': return 'cancelled';
+                case 'pending': return 'pending';
                 case 'no_content_found': return 'no_content_found';
                 default: return '';
             }
+        }
+
+        function getJobControls(job) {
+            const jobId = job.job_id;
+            const status = job.status;
+            
+            let controls = '<div class="field is-grouped mt-4">';
+            
+            // Show different buttons based on job status
+            switch(status) {
+                case 'running':
+                    controls += `
+                        <p class="control">
+                            <button class="button is-warning is-small" onclick="pauseJob('${jobId}')">
+                                <span class="icon"><i class="fas fa-pause"></i></span>
+                                <span>Pause</span>
+                            </button>
+                        </p>
+                        <p class="control">
+                            <button class="button is-danger is-small" onclick="stopJob('${jobId}')">
+                                <span class="icon"><i class="fas fa-stop"></i></span>
+                                <span>Stop</span>
+                            </button>
+                        </p>
+                    `;
+                    break;
+                    
+                case 'paused':
+                    controls += `
+                        <p class="control">
+                            <button class="button is-success is-small" onclick="resumeJob('${jobId}')">
+                                <span class="icon"><i class="fas fa-play"></i></span>
+                                <span>Resume</span>
+                            </button>
+                        </p>
+                        <p class="control">
+                            <button class="button is-danger is-small" onclick="stopJob('${jobId}')">
+                                <span class="icon"><i class="fas fa-stop"></i></span>
+                                <span>Stop</span>
+                            </button>
+                        </p>
+                    `;
+                    break;
+                    
+                case 'completed':
+                case 'failed':
+                case 'cancelled':
+                    // Show view details button for finished jobs
+                    controls += `
+                        <p class="control">
+                            <button class="button is-info is-small" onclick="viewJobDetails('${jobId}')">
+                                <span class="icon"><i class="fas fa-info-circle"></i></span>
+                                <span>Details</span>
+                            </button>
+                        </p>
+                    `;
+                    break;
+                    
+                default:
+                    // No controls for pending or unknown status
+                    break;
+            }
+            
+            controls += '</div>';
+            return controls;
         }
 
         async function handleAddSite() {
@@ -1134,6 +1244,7 @@
                                     Articles: ${job.total_articles || 0}
                                     ${job.completed_at ? ` | Completed: ${new Date(job.completed_at).toLocaleString()}` : ''}
                                 </p>
+                                ${getJobControls(job)}
                             </div>
                         </div>
                     `;
@@ -1142,6 +1253,187 @@
                     console.error('Error rendering job card:', error, job);
                 }
             });
+        }
+
+        // Job control functions
+        async function pauseJob(jobId) {
+            try {
+                showLoading('Pausing job...');
+                const response = await fetch(`${API_BASE}/crawl/${jobId}/pause`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showNotification(`Job paused: ${result.message}`, 'success');
+                    loadCrawlJobs(); // Refresh jobs list to show updated status
+                } else {
+                    showNotification(`Error pausing job: ${result.detail}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error pausing job:', error);
+                showNotification('Error pausing job', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function stopJob(jobId) {
+            // Confirm before stopping
+            if (!confirm('Are you sure you want to stop this crawl job? This action cannot be undone.')) {
+                return;
+            }
+
+            try {
+                showLoading('Stopping job...');
+                const response = await fetch(`${API_BASE}/crawl/${jobId}/stop`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showNotification(`Job stopped: ${result.message}`, 'success');
+                    loadCrawlJobs(); // Refresh jobs list to show updated status
+                } else {
+                    showNotification(`Error stopping job: ${result.detail}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error stopping job:', error);
+                showNotification('Error stopping job', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function resumeJob(jobId) {
+            try {
+                showLoading('Resuming job...');
+                const response = await fetch(`${API_BASE}/crawl/${jobId}/resume`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showNotification(`Job resumed: ${result.message}`, 'success');
+                    loadCrawlJobs(); // Refresh jobs list to show updated status
+                } else {
+                    showNotification(`Error resuming job: ${result.detail}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error resuming job:', error);
+                showNotification('Error resuming job', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function viewJobDetails(jobId) {
+            try {
+                showLoading('Loading job details...');
+                
+                // Fetch detailed progress information
+                const response = await fetch(`${API_BASE}/crawl/${jobId}/progress`);
+                const progress = await response.json();
+                
+                if (response.ok) {
+                    displayJobDetailsModal(progress);
+                } else {
+                    showNotification('Error loading job details', 'error');
+                }
+            } catch (error) {
+                console.error('Error loading job details:', error);
+                showNotification('Error loading job details', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function displayJobDetailsModal(progress) {
+            const modalContent = `
+                <div class="modal is-active" id="job-details-modal">
+                    <div class="modal-background" onclick="closeModal('job-details-modal')"></div>
+                    <div class="modal-card">
+                        <header class="modal-card-head">
+                            <p class="modal-card-title">Job Details: ${progress.job_id}</p>
+                            <button class="delete" onclick="closeModal('job-details-modal')"></button>
+                        </header>
+                        <section class="modal-card-body">
+                            <div class="columns">
+                                <div class="column is-half">
+                                    <h3 class="title is-5">Job Information</h3>
+                                    <table class="table is-fullwidth">
+                                        <tbody>
+                                            <tr>
+                                                <td><strong>Status:</strong></td>
+                                                <td><span class="tag ${getStatusClass(progress.status)}">${progress.status}</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Started:</strong></td>
+                                                <td>${new Date(progress.start_time).toLocaleString()}</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Last Update:</strong></td>
+                                                <td>${new Date(progress.last_update).toLocaleString()}</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Progress:</strong></td>
+                                                <td>${progress.overall_progress_percentage?.toFixed(1)}%</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Total Articles:</strong></td>
+                                                <td>${progress.total_articles || 0}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="column is-half">
+                                    <h3 class="title is-5">Site Progress</h3>
+                                    <div class="content">
+                                        ${Object.entries(progress.site_progresses || {}).map(([siteId, siteProgress]) => `
+                                            <div class="box">
+                                                <h4 class="subtitle is-6">${siteProgress.site_name}</h4>
+                                                <div class="level is-mobile">
+                                                    <div class="level-left">
+                                                        <span class="tag ${getStatusClass(siteProgress.status)}">${siteProgress.status}</span>
+                                                    </div>
+                                                    <div class="level-right">
+                                                        <span class="has-text-grey-light">${siteProgress.progress_percentage?.toFixed(1)}%</span>
+                                                    </div>
+                                                </div>
+                                                <progress class="progress is-small" value="${siteProgress.progress_percentage || 0}" max="100"></progress>
+                                                <p class="is-size-7 has-text-grey">
+                                                    URLs: ${siteProgress.total_urls_crawled}/${siteProgress.total_urls_discovered} | 
+                                                    Articles: ${siteProgress.articles_found}
+                                                </p>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                        <footer class="modal-card-foot">
+                            <button class="button" onclick="closeModal('job-details-modal')">Close</button>
+                        </footer>
+                    </div>
+                </div>
+            `;
+            
+            // Add modal to body
+            const modalDiv = document.createElement('div');
+            modalDiv.innerHTML = modalContent;
+            document.body.appendChild(modalDiv.firstElementChild);
         }
 
         async function loadStatistics() {
